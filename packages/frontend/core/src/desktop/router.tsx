@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import {
   createBrowserRouter as reactRouterCreateBrowserRouter,
+  createMemoryRouter,
   redirect,
   useNavigate,
 } from 'react-router-dom';
@@ -194,11 +195,27 @@ export const topLevelRoutes = [
 const createBrowserRouter = wrapCreateBrowserRouterV6(
   reactRouterCreateBrowserRouter
 );
-export const router = (
-  window.SENTRY_RELEASE ? createBrowserRouter : reactRouterCreateBrowserRouter
-)(topLevelRoutes, {
-  basename: environment.subPath,
+const routerOptions = {
   future: {
     v7_normalizeFormMethod: true,
   },
-});
+} as const;
+
+const haloDocsGlobals = globalThis as typeof globalThis & {
+  __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+  __HALO_DOCS_INITIAL_PATH__?: string;
+};
+
+export const router = haloDocsGlobals.__HALO_DOCS_COMPILED_PACKAGE__
+  ? createMemoryRouter(topLevelRoutes, {
+      ...routerOptions,
+      initialEntries: [
+        haloDocsGlobals.__HALO_DOCS_INITIAL_PATH__ ?? '/workspace/local/all',
+      ],
+    })
+  : (
+      window.SENTRY_RELEASE ? createBrowserRouter : reactRouterCreateBrowserRouter
+    )(topLevelRoutes, {
+      ...routerOptions,
+      basename: environment.subPath,
+    });
