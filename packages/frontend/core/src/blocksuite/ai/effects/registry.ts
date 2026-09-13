@@ -49,8 +49,6 @@ export const editorEffectElementTags = [
   'ai-panel-generating',
   'ai-panel-error',
   'ai-block-diff-options',
-  'affine-block-diff-playground',
-  'affine-block-diff-playground-modal',
   'affine-ai-panel-widget',
   'affine-edgeless-copilot-widget',
   'affine-block-diff-widget-for-block',

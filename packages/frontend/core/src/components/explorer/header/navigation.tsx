@@ -11,23 +11,9 @@ const items = [
     testId: 'workspace-docs-button',
     to: '/all',
   },
-  {
-    value: 'collections',
-    label: 'com.affine.collections.header',
-    testId: 'workspace-collections-button',
-    to: '/collection',
-  },
-  {
-    value: 'tags',
-    label: 'Tags',
-    testId: 'workspace-tags-button',
-    to: '/tag',
-  },
 ] as const;
 
-type NavigationKey = (typeof items)[number]['value'];
-
-export const ExplorerNavigation = ({ active }: { active: NavigationKey }) => {
+export const ExplorerNavigation = ({ active }: { active: string }) => {
   const t = useI18n();
 
   return (

@@ -223,7 +223,7 @@ export function FallbackHeaderWithWorkspaceNavigator() {
   return (
     <div className={styles.fallbackHeader}>
       {currentWorkspace && navigate ? (
-        <WorkspaceNavigator showSyncStatus showEnableCloudButton dense />
+        <WorkspaceNavigator localOnly dense />
       ) : (
         <FallbackHeaderSkeleton />
       )}

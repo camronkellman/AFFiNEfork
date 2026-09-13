@@ -10,19 +10,22 @@ import * as styles from './index.css';
 export const AddWorkspace = ({
   onAddWorkspace,
   onNewWorkspace,
+  localOnly,
 }: {
   onAddWorkspace?: () => void;
   onNewWorkspace?: () => void;
+  localOnly?: boolean;
 }) => {
   const t = useI18n();
   const defaultServerService = useService(DefaultServerService);
-  const enableLocalWorkspace = useLiveData(
+  const serverSupportsLocalWorkspace = useLiveData(
     defaultServerService.server.config$.selector(
       c =>
         c.features.includes(ServerFeature.LocalWorkspace) ||
         BUILD_CONFIG.isNative
     )
   );
+  const enableLocalWorkspace = localOnly || serverSupportsLocalWorkspace;
 
   return (
     <>

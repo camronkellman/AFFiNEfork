@@ -29,6 +29,8 @@ interface WorkspaceSelectorProps {
   showEnableCloudButton?: boolean;
   showArrowDownIcon?: boolean;
   showSyncStatus?: boolean;
+  /** if true, only local workspaces and local creation are offered */
+  localOnly?: boolean;
   disable?: boolean;
   menuContentOptions?: MenuProps['contentOptions'];
   className?: string;
@@ -46,10 +48,14 @@ export const WorkspaceSelector = ({
   onOpenChange: outerOnOpenChange,
   showEnableCloudButton,
   showSyncStatus,
+  localOnly: requestedLocalOnly,
   className,
   menuContentOptions,
   dense,
 }: WorkspaceSelectorProps) => {
+  // The browser build is local-first: keep cloud/account entry points out of
+  // the workspace picker even when a caller uses the default props.
+  const localOnly = requestedLocalOnly ?? !BUILD_CONFIG.isElectron;
   const { workspacesService, globalContextService } = useServices({
     GlobalContextService,
     WorkspacesService,
@@ -109,6 +115,7 @@ export const WorkspaceSelector = ({
           onClickWorkspace={onSelectWorkspace}
           onCreatedWorkspace={onCreatedWorkspace}
           showEnableCloudButton={showEnableCloudButton}
+          localOnly={localOnly}
         />
       }
       contentOptions={{

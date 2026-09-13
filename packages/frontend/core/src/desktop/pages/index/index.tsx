@@ -217,6 +217,7 @@ export const Component = ({
       >
         <WorkspaceNavigator
           open={true}
+          localOnly
           menuContentOptions={{
             forceMount: true,
           }}

@@ -40,12 +40,6 @@ import {
   AffineBlockDiffWidgetForPage,
 } from '../widgets/block-diff/page';
 import {
-  AFFINE_BLOCK_DIFF_PLAYGROUND,
-  AFFINE_BLOCK_DIFF_PLAYGROUND_MODAL,
-  BlockDiffPlayground,
-  BlockDiffPlaygroundModal,
-} from '../widgets/block-diff/playground';
-import {
   AFFINE_EDGELESS_COPILOT_WIDGET,
   EdgelessCopilotWidget,
 } from '../widgets/edgeless-copilot';
@@ -80,8 +74,6 @@ const editorElements = {
   'ai-panel-generating': AIPanelGenerating,
   'ai-panel-error': AIPanelError,
   'ai-block-diff-options': BlockDiffOptions,
-  [AFFINE_BLOCK_DIFF_PLAYGROUND]: BlockDiffPlayground,
-  [AFFINE_BLOCK_DIFF_PLAYGROUND_MODAL]: BlockDiffPlaygroundModal,
   [AFFINE_AI_PANEL_WIDGET]: AffineAIPanelWidget,
   [AFFINE_EDGELESS_COPILOT_WIDGET]: EdgelessCopilotWidget,
   [AFFINE_BLOCK_DIFF_WIDGET_FOR_BLOCK]: AffineBlockDiffWidgetForBlock,

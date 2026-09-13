@@ -56,6 +56,7 @@ interface UserWithWorkspaceListProps {
     defaultDocId?: string;
   }) => void;
   showEnableCloudButton?: boolean;
+  localOnly?: boolean;
 }
 
 export const UserWithWorkspaceList = ({
@@ -63,6 +64,7 @@ export const UserWithWorkspaceList = ({
   onClickWorkspace,
   onCreatedWorkspace,
   showEnableCloudButton,
+  localOnly,
 }: UserWithWorkspaceListProps) => {
   const globalDialogService = useService(GlobalDialogService);
   const session = useLiveData(useService(AuthService).session.session$);
@@ -76,6 +78,7 @@ export const UserWithWorkspaceList = ({
 
   const onNewWorkspace = useCallback(() => {
     const enableLocalWorkspace =
+      localOnly ||
       BUILD_CONFIG.isNative ||
       defaultServerService.server.config$.value.features.includes(
         ServerFeature.LocalWorkspace
@@ -84,16 +87,21 @@ export const UserWithWorkspaceList = ({
       return openSignInModal();
     }
     track.$.navigationPanel.workspaceList.createWorkspace();
-    globalDialogService.open('create-workspace', {}, payload => {
-      if (payload) {
-        onCreatedWorkspace?.(payload);
+    globalDialogService.open(
+      'create-workspace',
+      localOnly ? { serverId: 'local', localOnly: true } : {},
+      payload => {
+        if (payload) {
+          onCreatedWorkspace?.(payload);
+        }
       }
-    });
+    );
     onEventEnd?.();
   }, [
     globalDialogService,
     defaultServerService,
     isAuthenticated,
+    localOnly,
     onCreatedWorkspace,
     onEventEnd,
     openSignInModal,
@@ -123,12 +131,14 @@ export const UserWithWorkspaceList = ({
           onEventEnd={onEventEnd}
           onClickWorkspace={onClickWorkspace}
           showEnableCloudButton={showEnableCloudButton}
+          localOnly={localOnly}
         />
       </ScrollableContainer>
       <div className={styles.workspaceFooter}>
         <AddWorkspace
           onAddWorkspace={onAddWorkspace}
           onNewWorkspace={onNewWorkspace}
+          localOnly={localOnly}
         />
       </div>
     </>
