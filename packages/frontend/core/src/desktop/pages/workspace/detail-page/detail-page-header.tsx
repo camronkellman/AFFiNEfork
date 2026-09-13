@@ -1,7 +1,6 @@
 import {
   Divider,
   DragHandle,
-  IconButton,
   type InlineEditHandle,
   observeResize,
   useDraggable,
@@ -22,17 +21,12 @@ import { EditorService } from '@affine/core/modules/editor';
 import { JournalService } from '@affine/core/modules/journal';
 import { SharePageButton } from '@affine/core/modules/share-menu';
 import { TemplateDocService } from '@affine/core/modules/template-doc';
-import {
-  ViewIcon,
-  ViewTitle,
-  WorkbenchService,
-} from '@affine/core/modules/workbench';
+import { ViewIcon, ViewTitle } from '@affine/core/modules/workbench';
 import type { Workspace } from '@affine/core/modules/workspace';
 import type { AffineDNDData } from '@affine/core/types/dnd';
 import { useI18n } from '@affine/i18n';
 import { track } from '@affine/track';
 import type { Store } from '@blocksuite/affine/store';
-import { AllDocsIcon } from '@blocksuite/icons/rc';
 import { useLiveData, useService } from '@toeverything/infra';
 import clsx from 'clsx';
 import {
@@ -47,30 +41,6 @@ import {
 
 import * as styles from './detail-page-header.css';
 import { useDetailPageHeaderResponsive } from './use-header-responsive';
-
-const isHaloDocsEmbedded =
-  (globalThis as typeof globalThis & {
-    __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
-  }).__HALO_DOCS_COMPILED_PACKAGE__ === true;
-
-const EmbeddedAllDocsButton = () => {
-  const t = useI18n();
-  const workbench = useService(WorkbenchService).workbench;
-
-  if (!isHaloDocsEmbedded) return null;
-
-  return (
-    <IconButton
-      size="20"
-      tooltip={t['All pages']()}
-      aria-label={t['All pages']()}
-      data-testid="detail-back-to-all-docs"
-      onClick={() => workbench.openAll()}
-    >
-      <AllDocsIcon />
-    </IconButton>
-  );
-};
 
 const Header = forwardRef<
   HTMLDivElement,
@@ -133,7 +103,6 @@ export function JournalPageHeader({ page, workspace }: PageHeaderProps) {
     <Header className={styles.header} ref={containerRef}>
       <ViewTitle title={title} />
       <ViewIcon icon="journal" />
-      <EmbeddedAllDocsButton />
       <EditorModeSwitch />
       <div className={styles.journalWeekPicker}>
         <JournalWeekDatePicker page={page} />
@@ -186,7 +155,6 @@ export function NormalPageHeader({ page, workspace }: PageHeaderProps) {
     <Header className={styles.header} ref={containerRef}>
       <ViewTitle title={title} />
       <ViewIcon icon={currentMode ?? 'page'} />
-      <EmbeddedAllDocsButton />
       <EditorModeSwitch />
       <BlocksuiteHeaderTitle inputHandleRef={titleInputHandleRef} />
       <TemplateMark />

@@ -23,11 +23,6 @@ import {
 
 import * as styles from './styles.css';
 
-const isHaloDocsEmbedded =
-  (globalThis as typeof globalThis & {
-    __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
-  }).__HALO_DOCS_COMPILED_PACKAGE__ === true;
-
 export const AppContainer = ({
   children,
   className,
@@ -99,8 +94,7 @@ const BrowserLayout = ({
 
   return (
     <div className={styles.browserAppViewContainer}>
-      {!isHaloDocsEmbedded &&
-        (fallback ? <AppSidebarFallback /> : isInWorkspace && <RootAppSidebar />)}
+      {fallback ? <AppSidebarFallback /> : isInWorkspace && <RootAppSidebar />}
       <MainContainer>{children}</MainContainer>
     </div>
   );
@@ -125,7 +119,7 @@ const MainContainer = forwardRef<
       data-is-desktop={BUILD_CONFIG.isElectron}
       data-transparent={false}
       data-client-border={appSettings.clientBorder}
-      data-side-bar-open={!isHaloDocsEmbedded && open && isInWorkspace}
+      data-side-bar-open={open && isInWorkspace}
       data-testid="main-container"
       ref={ref}
     >

@@ -1,4 +1,4 @@
-import { IconButton, type MenuProps } from '@affine/component';
+import { type MenuProps } from '@affine/component';
 import { usePageHelper } from '@affine/core/blocksuite/block-suite-page-list/utils';
 import { ExplorerDisplayMenuButton } from '@affine/core/components/explorer/display-menu';
 import { ViewToggle } from '@affine/core/components/explorer/display-menu/view-toggle';
@@ -11,7 +11,6 @@ import { WorkbenchService } from '@affine/core/modules/workbench';
 import { WorkspaceService } from '@affine/core/modules/workspace';
 import { inferOpenMode } from '@affine/core/utils';
 import { useI18n } from '@affine/i18n';
-import { DeleteIcon } from '@blocksuite/icons/rc';
 import track from '@affine/track';
 import { useService } from '@toeverything/infra';
 import { useCallback } from 'react';
@@ -103,15 +102,6 @@ export const AllDocsHeader = ({
         >
           <span className={styles.newPageButtonLabel}>{t['New Page']()}</span>
         </PageListNewPageButton>
-        <IconButton
-          size="20"
-          tooltip={t['com.affine.workspaceSubPath.trash']()}
-          aria-label={t['com.affine.workspaceSubPath.trash']()}
-          data-testid="all-docs-trash-button"
-          onClick={() => workbench.openTrash()}
-        >
-          <DeleteIcon />
-        </IconButton>
       </div>
     </div>
   );
