@@ -13,6 +13,11 @@ import * as styles from './route-container.css';
 import { useViewPosition } from './use-view-position';
 import { ViewBodyTarget, ViewHeaderTarget } from './view-islands';
 
+const isHaloDocsEmbedded =
+  (globalThis as typeof globalThis & {
+    __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+  }).__HALO_DOCS_COMPILED_PACKAGE__ === true;
+
 export interface Props {
   route: {
     Component: React.ComponentType;
@@ -53,7 +58,8 @@ export const RouteContainer = () => {
     workbench.toggleSidebar();
   }, [workbench]);
 
-  const showSwitch = !BUILD_CONFIG.isElectron && viewPosition.isFirst;
+  const showSwitch =
+    !isHaloDocsEmbedded && !BUILD_CONFIG.isElectron && viewPosition.isFirst;
 
   return (
     <div className={styles.root}>

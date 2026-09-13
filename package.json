@@ -22,6 +22,7 @@
     "af": "r affine.ts",
     "dev": "yarn affine dev",
     "build": "yarn affine build",
+    "halo:package": "node halo/package-build.mjs",
     "lint:format": "oxfmt --check .",
     "lint:format:fix": "oxfmt --write .",
     "lint:ox": "oxlint --deny-warnings",

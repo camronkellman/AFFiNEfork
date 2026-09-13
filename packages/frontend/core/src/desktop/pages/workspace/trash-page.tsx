@@ -1,4 +1,4 @@
-import { Button, toast, useConfirmModal } from '@affine/component';
+import { Button, IconButton, toast, useConfirmModal } from '@affine/component';
 import {
   createDocExplorerContext,
   DocExplorerContext,
@@ -9,8 +9,9 @@ import { Header } from '@affine/core/components/pure/header';
 import { CollectionRulesService } from '@affine/core/modules/collection-rules';
 import { GlobalContextService } from '@affine/core/modules/global-context';
 import { WorkspacePermissionService } from '@affine/core/modules/permissions';
+import { WorkbenchService } from '@affine/core/modules/workbench';
 import { useI18n } from '@affine/i18n';
-import { DeleteIcon } from '@blocksuite/icons/rc';
+import { ArrowLeftBigIcon, DeleteIcon } from '@blocksuite/icons/rc';
 import { useLiveData, useService } from '@toeverything/infra';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -24,12 +25,18 @@ import {
 import { EmptyPageList } from './page-list-empty';
 import * as styles from './trash-page.css';
 
+const isHaloDocsEmbedded =
+  (globalThis as typeof globalThis & {
+    __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+  }).__HALO_DOCS_COMPILED_PACKAGE__ === true;
+
 const TrashHeader = ({ canManageTrash }: { canManageTrash: boolean }) => {
   const t = useI18n();
   const contextValue = useContext(DocExplorerContext);
   const groups = useLiveData(contextValue.groups$);
   const selectMode = useLiveData(contextValue.selectMode$);
   const selectedDocIds = useLiveData(contextValue.selectedDocIds$);
+  const workbench = useService(WorkbenchService).workbench;
 
   const allDocIds = useMemo(
     () => Array.from(new Set(groups.flatMap(group => group.items))),
@@ -51,6 +58,17 @@ const TrashHeader = ({ canManageTrash }: { canManageTrash: boolean }) => {
     <Header
       left={
         <div className={styles.trashTitle}>
+          {isHaloDocsEmbedded && (
+            <IconButton
+              size="20"
+              tooltip={t['All pages']()}
+              aria-label={t['All pages']()}
+              data-testid="trash-back-to-all-docs"
+              onClick={() => workbench.openAll()}
+            >
+              <ArrowLeftBigIcon />
+            </IconButton>
+          )}
           <DeleteIcon className={styles.trashIcon} />
           {t['com.affine.workspaceSubPath.trash']()}
           {selectMode && canManageTrash && allDocIds.length > 0 ? (
