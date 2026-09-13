@@ -420,7 +420,7 @@ const useAllDocsOptions = () => {
   const workspaceLocalState = useService(WorkspaceLocalState);
 
   const readSavedViewMode = useCallback(() => {
-    return workspaceLocalState.get<ViewMode>('allDocsMode') ?? 'grid';
+    return workspaceLocalState.get<ViewMode>('allDocsMode') ?? 'list';
   }, [workspaceLocalState]);
 
   const readSavedDisplayPreference = useCallback(

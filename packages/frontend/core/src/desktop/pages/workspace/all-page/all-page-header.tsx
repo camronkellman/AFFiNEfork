@@ -11,7 +11,6 @@ import { WorkbenchService } from '@affine/core/modules/workbench';
 import { WorkspaceService } from '@affine/core/modules/workspace';
 import { inferOpenMode } from '@affine/core/utils';
 import { useI18n } from '@affine/i18n';
-import { DeleteIcon } from '@blocksuite/icons/rc';
 import track from '@affine/track';
 import { DeleteIcon } from '@blocksuite/icons/rc';
 import { useService } from '@toeverything/infra';
