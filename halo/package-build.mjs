@@ -78,7 +78,9 @@ const assetBase = new URL('./', import.meta.url);
 globalThis.__HALO_DOCS_COMPILED_PACKAGE__ = true;
 globalThis.__HALO_DOCS_ASSET_BASE__ = assetBase.href;
 let ready;
-let activeUnmount;
+let donorUnmount;
+let persistentContainer;
+let activeTarget;
 let nativeFetch;
 let bridgedFetch;
 function installRequestBridge(host, backendBase) {
@@ -160,8 +162,36 @@ export async function mount(target, host) {
   await loadAssets();
   document.querySelectorAll('link[data-halo-docs-style]').forEach(link => { link.disabled = false; });
   if (!globalThis.HaloDocsModule?.mount) throw new Error('HALO Docs compiled entry did not initialize');
-  activeUnmount = globalThis.HaloDocsModule.mount(target, options);
-  return () => unmount();
+  if (!persistentContainer) {
+    persistentContainer = document.createElement('div');
+    persistentContainer.dataset.haloDocsPersistentRoot = '';
+    Object.assign(persistentContainer.style, {
+      width: '100%',
+      height: '100%',
+      minHeight: '0',
+      overflow: 'hidden',
+    });
+    target.replaceChildren(persistentContainer);
+    donorUnmount = globalThis.HaloDocsModule.mount(persistentContainer, options);
+    window.addEventListener('pagehide', () => {
+      donorUnmount?.();
+      donorUnmount = undefined;
+      removeRequestBridge();
+    }, { once: true });
+  } else {
+    // AFFiNE owns module-level framework, router, worker, and workbench
+    // singletons. Destroying its React root and mounting those same singletons
+    // again leaves the workbench visible but unsubscribed after the first CRM
+    // route transition. Preserve the original donor root and reattach it.
+    target.replaceChildren(persistentContainer);
+    globalThis.workbench?.openAll?.({
+      at: 'active',
+      replaceHistory: true,
+    });
+  }
+  activeTarget = target;
+  requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  return () => unmount(target);
 }
 export async function preload(host) {
   if (host) {
@@ -173,10 +203,10 @@ export async function preload(host) {
   }
   await prefetchAssets();
 }
-export function unmount() {
-  activeUnmount?.();
-  activeUnmount = undefined;
-  removeRequestBridge();
+export function unmount(target) {
+  if (target && activeTarget && target !== activeTarget) return;
+  persistentContainer?.remove();
+  activeTarget = undefined;
   document.querySelectorAll('link[data-halo-docs-style]').forEach(link => { link.disabled = true; });
   delete globalThis.__HALO_DOCS_INITIAL_PATH__;
 }
