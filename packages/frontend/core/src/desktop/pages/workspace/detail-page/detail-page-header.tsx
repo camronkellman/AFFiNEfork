@@ -1,6 +1,7 @@
 import {
   Divider,
   DragHandle,
+  IconButton,
   type InlineEditHandle,
   observeResize,
   useDraggable,
@@ -21,12 +22,17 @@ import { EditorService } from '@affine/core/modules/editor';
 import { JournalService } from '@affine/core/modules/journal';
 import { SharePageButton } from '@affine/core/modules/share-menu';
 import { TemplateDocService } from '@affine/core/modules/template-doc';
-import { ViewIcon, ViewTitle } from '@affine/core/modules/workbench';
+import {
+  ViewIcon,
+  ViewTitle,
+  WorkbenchService,
+} from '@affine/core/modules/workbench';
 import type { Workspace } from '@affine/core/modules/workspace';
 import type { AffineDNDData } from '@affine/core/types/dnd';
 import { useI18n } from '@affine/i18n';
 import { track } from '@affine/track';
 import type { Store } from '@blocksuite/affine/store';
+import { ArrowLeftSmallIcon } from '@blocksuite/icons/rc';
 import { useLiveData, useService } from '@toeverything/infra';
 import clsx from 'clsx';
 import {
@@ -77,6 +83,23 @@ const TemplateMark = memo(function TemplateMark({
   );
 });
 
+const AllDocsBackButton = () => {
+  const t = useI18n();
+  const workbench = useService(WorkbenchService).workbench;
+
+  return (
+    <IconButton
+      aria-label={t['Go Back']()}
+      data-testid="doc-back-to-all-docs"
+      onClick={() => workbench.openAll()}
+      size={24}
+      tooltip={t['Go Back']()}
+    >
+      <ArrowLeftSmallIcon />
+    </IconButton>
+  );
+};
+
 interface PageHeaderProps {
   page: Store;
   workspace: Workspace;
@@ -101,6 +124,7 @@ export function JournalPageHeader({ page, workspace }: PageHeaderProps) {
 
   return (
     <Header className={styles.header} ref={containerRef}>
+      <AllDocsBackButton />
       <ViewTitle title={title} />
       <ViewIcon icon="journal" />
       <EditorModeSwitch />
@@ -153,6 +177,7 @@ export function NormalPageHeader({ page, workspace }: PageHeaderProps) {
 
   return (
     <Header className={styles.header} ref={containerRef}>
+      <AllDocsBackButton />
       <ViewTitle title={title} />
       <ViewIcon icon={currentMode ?? 'page'} />
       <EditorModeSwitch />
