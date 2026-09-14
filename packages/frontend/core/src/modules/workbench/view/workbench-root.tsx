@@ -22,9 +22,21 @@ import { ViewIslandRegistryProvider } from './view-islands';
 import { ViewRoot } from './view-root';
 import * as styles from './workbench-root.css';
 
-const useAdapter = BUILD_CONFIG.isElectron
-  ? useBindWorkbenchToDesktopRouter
-  : useBindWorkbenchToBrowserRouter;
+const isHaloDocsEmbedded = (
+  globalThis as typeof globalThis & {
+    __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+  }
+).__HALO_DOCS_COMPILED_PACKAGE__;
+
+// HALO keeps its own browser route while this module runs in the same DOM.
+// In the embedded build, use the one-way desktop adapter so the outer memory
+// router can initialise the workbench without writing every document change
+// back into itself. The two-way browser adapter otherwise races the active
+// view and can restore /all immediately after a document is opened.
+const useAdapter =
+  BUILD_CONFIG.isElectron || isHaloDocsEmbedded
+    ? useBindWorkbenchToDesktopRouter
+    : useBindWorkbenchToBrowserRouter;
 
 const routes: RouteObject[] = [
   {
