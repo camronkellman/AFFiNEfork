@@ -75,6 +75,15 @@ export const SignInStep = ({
 
   const [isValidEmail, setIsValidEmail] = useState(true);
 
+  const isHaloDocsEmbedded =
+    (globalThis as typeof globalThis & {
+      __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+    }).__HALO_DOCS_COMPILED_PACKAGE__ === true;
+
+  useEffect(() => {
+    if (isHaloDocsEmbedded) onSkip();
+  }, [isHaloDocsEmbedded, onSkip]);
+
   const loginStatus = useLiveData(authService.session.status$);
 
   useEffect(() => {
@@ -140,6 +149,8 @@ export const SignInStep = ({
       step: 'addSelfhosted',
     }));
   }, [changeState]);
+
+  if (isHaloDocsEmbedded) return null;
 
   if (versionError && isSelfhosted) {
     return (
