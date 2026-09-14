@@ -60,6 +60,72 @@ declare global {
 
 globalThis.Y = _Y;
 
+const replaceAFFiNEBranding = (value: unknown): boolean => {
+  let changed = false;
+
+  if (value instanceof _Y.Text) {
+    let text = value.toString();
+    let index = text.lastIndexOf('AFFiNE');
+    while (index !== -1) {
+      value.delete(index, 'AFFiNE'.length);
+      value.insert(index, 'HALO');
+      changed = true;
+      text = value.toString();
+      index = text.lastIndexOf('AFFiNE');
+    }
+    return changed;
+  }
+
+  if (value instanceof _Y.Map) {
+    for (const [key, child] of value.entries()) {
+      if (
+        typeof child === 'string' &&
+        !/(?:link|url)/i.test(key) &&
+        child.includes('AFFiNE')
+      ) {
+        value.set(key, child.replaceAll('AFFiNE', 'HALO'));
+        changed = true;
+      } else if (replaceAFFiNEBranding(child)) {
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  if (value instanceof _Y.Array) {
+    for (const child of value.toArray()) {
+      if (replaceAFFiNEBranding(child)) {
+        changed = true;
+      }
+    }
+  }
+
+  return changed;
+};
+
+const migrateOnboardingBranding = (workspace: Workspace) => {
+  if (!BUILD_CONFIG.isWeb) return;
+
+  const migrationKey = `halo:onboarding-branding:v1:${workspace.id}`;
+  if (localStorage.getItem(migrationKey)) return;
+
+  const onboardingDocs = Array.from(workspace.docCollection.docs.values()).filter(
+    doc => doc.meta?.title?.startsWith('Getting Started')
+  );
+  if (onboardingDocs.length === 0) return;
+
+  for (const doc of onboardingDocs) {
+    doc.load();
+    doc.spaceDoc.transact(() => {
+      for (const value of doc.spaceDoc.share.values()) {
+        replaceAFFiNEBranding(value);
+      }
+    });
+  }
+
+  localStorage.setItem(migrationKey, 'true');
+};
+
 export const Component = (): ReactElement => {
   const {
     workspacesService,
@@ -266,6 +332,12 @@ const WorkspacePage = ({ meta }: { meta: WorkspaceMetadata }) => {
     [workspace]
   );
   const isRootDocReady = useLiveData(rootDocReady$) ?? false;
+
+  useEffect(() => {
+    if (workspace && isRootDocReady) {
+      migrateOnboardingBranding(workspace);
+    }
+  }, [isRootDocReady, workspace]);
 
   useEffect(() => {
     if (workspace) {
