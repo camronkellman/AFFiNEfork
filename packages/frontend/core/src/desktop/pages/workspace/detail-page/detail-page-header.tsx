@@ -91,7 +91,14 @@ const AllDocsBackButton = () => {
     <IconButton
       aria-label={t['Go Back']()}
       data-testid="doc-back-to-all-docs"
-      onClick={() => workbench.openAll()}
+      onClick={event => {
+        event.preventDefault();
+        event.stopPropagation();
+        workbench.openAll({
+          at: 'active',
+          replaceHistory: true,
+        });
+      }}
       size={24}
       tooltip={t['Go Back']()}
     >
