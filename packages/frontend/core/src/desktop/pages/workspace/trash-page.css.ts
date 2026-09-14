@@ -20,14 +20,6 @@ export const trashIcon = style({
   color: cssVar('iconColor'),
   fontSize: cssVar('fontH5'),
 });
-export const backButton = style({
-  height: 30,
-  padding: '4px 8px',
-  marginRight: 4,
-  color: cssVarV2.text.secondary,
-  fontSize: 13,
-  fontWeight: 500,
-});
 export const selectAllButton = style({
   height: 24,
   padding: '2px 4px',

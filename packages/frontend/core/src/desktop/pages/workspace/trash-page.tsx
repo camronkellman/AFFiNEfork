@@ -1,4 +1,4 @@
-import { Button, toast, useConfirmModal } from '@affine/component';
+import { Button, IconButton, toast, useConfirmModal } from '@affine/component';
 import {
   createDocExplorerContext,
   DocExplorerContext,
@@ -53,17 +53,15 @@ const TrashHeader = ({ canManageTrash }: { canManageTrash: boolean }) => {
     <Header
       left={
         <div className={styles.trashTitle}>
-          <Button
+          <IconButton
             aria-label={t['Go Back']()}
-            className={styles.backButton}
             data-testid="trash-back-to-all-docs"
             onClick={() => workbench.openAll()}
-            prefix={<ArrowLeftSmallIcon />}
-            size="custom"
-            variant="plain"
+            size={24}
+            tooltip={t['Go Back']()}
           >
-            {t['Go Back']()}
-          </Button>
+            <ArrowLeftSmallIcon />
+          </IconButton>
           <DeleteIcon className={styles.trashIcon} />
           {t['com.affine.workspaceSubPath.trash']()}
           {selectMode && canManageTrash && allDocIds.length > 0 ? (

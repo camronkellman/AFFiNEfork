@@ -12,10 +12,12 @@ export const DocumentTitle = () => {
 
   useEffect(() => {
     const prefix = notificationCount > 0 ? `(${notificationCount}) ` : '';
-    document.title = prefix + (viewTitle ? `${viewTitle} · AFFiNE` : 'AFFiNE');
+    const productName = BUILD_CONFIG.isWeb ? 'HALO' : 'AFFiNE';
+    document.title =
+      prefix + (viewTitle ? `${viewTitle} · ${productName}` : productName);
 
     return () => {
-      document.title = 'AFFiNE';
+      document.title = productName;
     };
   }, [notificationCount, viewTitle]);
 
