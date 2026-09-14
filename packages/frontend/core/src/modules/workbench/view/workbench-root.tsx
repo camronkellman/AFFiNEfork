@@ -29,14 +29,20 @@ const isHaloDocsEmbedded = (
 ).__HALO_DOCS_COMPILED_PACKAGE__;
 
 // HALO keeps its own browser route while this module runs in the same DOM.
-// In the embedded build, use the one-way desktop adapter so the outer memory
-// router can initialise the workbench without writing every document change
-// back into itself. The two-way browser adapter otherwise races the active
-// view and can restore /all immediately after a document is opened.
+// The embedded workbench must own its view history completely: binding the
+// outer memory-router location to the workbench causes its permanent `/all`
+// route to overwrite document navigation after a card is clicked.
+const useBindWorkbenchToEmbeddedRouter = (
+  _workbench: Parameters<typeof useBindWorkbenchToDesktopRouter>[0],
+  _basename: string
+) => {};
+
 const useAdapter =
-  BUILD_CONFIG.isElectron || isHaloDocsEmbedded
-    ? useBindWorkbenchToDesktopRouter
-    : useBindWorkbenchToBrowserRouter;
+  isHaloDocsEmbedded
+    ? useBindWorkbenchToEmbeddedRouter
+    : BUILD_CONFIG.isElectron
+      ? useBindWorkbenchToDesktopRouter
+      : useBindWorkbenchToBrowserRouter;
 
 const routes: RouteObject[] = [
   {
