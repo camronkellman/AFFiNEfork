@@ -9,6 +9,10 @@ export const appStyle = style({
   display: 'flex',
   backgroundColor: cssVar('backgroundPrimaryColor'),
   selectors: {
+    '&[data-halo-docs-embedded="true"]': {
+      height: '100%',
+      minHeight: 0,
+    },
     '&.blur-background': {
       backgroundColor: 'transparent',
     },

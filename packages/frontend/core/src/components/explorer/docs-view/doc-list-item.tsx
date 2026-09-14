@@ -7,10 +7,7 @@ import {
 } from '@affine/component';
 import { DocsService } from '@affine/core/modules/doc';
 import { DocDisplayMetaService } from '@affine/core/modules/doc-display-meta';
-import {
-  WorkbenchLink,
-  WorkbenchService,
-} from '@affine/core/modules/workbench';
+import { WorkbenchLink } from '@affine/core/modules/workbench';
 import type { AffineDNDData } from '@affine/core/types/dnd';
 import { useI18n } from '@affine/i18n';
 import track from '@affine/track';
@@ -70,7 +67,6 @@ class MixId {
   }
 }
 export const DocListItem = ({ ...props }: DocListItemProps) => {
-  const workbench = useService(WorkbenchService).workbench;
   const contextValue = useContext(DocExplorerContext);
   const view = useLiveData(contextValue.view$) ?? 'list';
   const groups = useLiveData(contextValue.groups$);
@@ -143,9 +139,8 @@ export const DocListItem = ({ ...props }: DocListItemProps) => {
           contextValue.prevCheckAnchorId$?.next(currCursor);
           return;
         } else {
-          e.preventDefault();
+          // as link
           track.allDocs.list.doc.openDoc();
-          workbench.openDoc(docId);
           return;
         }
       }
@@ -156,7 +151,6 @@ export const DocListItem = ({ ...props }: DocListItemProps) => {
       prevCheckAnchorId,
       props,
       selectMode,
-      workbench,
     ]
   );
 

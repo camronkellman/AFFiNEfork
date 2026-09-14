@@ -52,6 +52,7 @@ export const AppContainer = ({
         'noisy-background': noisyBackground,
         'blur-background': blurBackground,
       })}
+      data-halo-docs-embedded={isHaloDocsEmbedded}
       data-noise-background={noisyBackground}
       data-translucent={blurBackground}
     >
