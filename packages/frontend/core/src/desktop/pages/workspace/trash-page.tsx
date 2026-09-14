@@ -9,8 +9,9 @@ import { Header } from '@affine/core/components/pure/header';
 import { CollectionRulesService } from '@affine/core/modules/collection-rules';
 import { GlobalContextService } from '@affine/core/modules/global-context';
 import { WorkspacePermissionService } from '@affine/core/modules/permissions';
+import { WorkbenchService } from '@affine/core/modules/workbench';
 import { useI18n } from '@affine/i18n';
-import { DeleteIcon } from '@blocksuite/icons/rc';
+import { ArrowLeftSmallIcon, DeleteIcon } from '@blocksuite/icons/rc';
 import { useLiveData, useService } from '@toeverything/infra';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -26,6 +27,7 @@ import * as styles from './trash-page.css';
 
 const TrashHeader = ({ canManageTrash }: { canManageTrash: boolean }) => {
   const t = useI18n();
+  const workbench = useService(WorkbenchService).workbench;
   const contextValue = useContext(DocExplorerContext);
   const groups = useLiveData(contextValue.groups$);
   const selectMode = useLiveData(contextValue.selectMode$);
@@ -51,6 +53,17 @@ const TrashHeader = ({ canManageTrash }: { canManageTrash: boolean }) => {
     <Header
       left={
         <div className={styles.trashTitle}>
+          <Button
+            aria-label={t['Go Back']()}
+            className={styles.backButton}
+            data-testid="trash-back-to-all-docs"
+            onClick={() => workbench.openAll()}
+            prefix={<ArrowLeftSmallIcon />}
+            size="custom"
+            variant="plain"
+          >
+            {t['Go Back']()}
+          </Button>
           <DeleteIcon className={styles.trashIcon} />
           {t['com.affine.workspaceSubPath.trash']()}
           {selectMode && canManageTrash && allDocIds.length > 0 ? (
