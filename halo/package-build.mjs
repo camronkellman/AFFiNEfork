@@ -1,6 +1,13 @@
-import { readFileSync, renameSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import {
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -15,11 +22,11 @@ execFileSync('corepack', ['yarn', 'affine', '@affine/web', 'build'], {
     ...process.env,
     PUBLIC_PATH: '/',
     GITHUB_SHA: process.env.GITHUB_SHA ?? 'halo-docs-package',
-    SISO_LOCAL_BACKEND_URL: process.env.SISO_LOCAL_BACKEND_URL ?? 'http://127.0.0.1:3012',
+    SISO_LOCAL_BACKEND_URL:
+      process.env.SISO_LOCAL_BACKEND_URL ?? 'http://127.0.0.1:3012',
   },
 });
 
-rmSync(output, { recursive: true, force: true });
 // The package is the final consumer of the generated dist. Move it instead
 // of duplicating ~200 MiB of assets, which also keeps low-space build hosts
 // from producing a partially copied package.
@@ -27,8 +34,12 @@ rmSync(output, { recursive: true, force: true });
 renameSync(sourceDist, output);
 
 const html = readFileSync(resolve(output, 'index.html'), 'utf8');
-const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(match => match[1]);
-const styles = [...html.matchAll(/<link[^>]+href="([^"]+\.css)"/g)].map(match => match[1]);
+const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(
+  match => match[1]
+);
+const styles = [...html.matchAll(/<link[^>]+href="([^"]+\.css)"/g)].map(
+  match => match[1]
+);
 const mainScript = scripts.at(-1);
 if (!mainScript) throw new Error('Rspack output has no browser entry script');
 
@@ -43,16 +54,40 @@ for (const file of textFiles) {
   // the compiled package portable and do not disclose the build machine.
   source = source.replaceAll(root, '/halo-docs-build');
   if (file.includes('/js/runtime.') && file.endsWith('.js')) {
-    source = source.replace(/h\.p="?\/?"?/, 'h.p=globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href');
-    source = source.replace('var t=h.p+h.u(e),c=Error();', 'var t=new URL(h.u(e),globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href).href,c=Error();');
-    source = source.replace('var t=h.miniCssF(e),c=h.p+t;', 'var t=h.miniCssF(e),c=new URL(t,globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href).href;');
+    source = source.replace(
+      /h\.p="?\/?"?/,
+      'h.p=globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href'
+    );
+    source = source.replace(
+      'var t=h.p+h.u(e),c=Error();',
+      'var t=new URL(h.u(e),globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href).href,c=Error();'
+    );
+    source = source.replace(
+      'var t=h.miniCssF(e),c=h.p+t;',
+      'var t=h.miniCssF(e),c=new URL(t,globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href).href;'
+    );
   }
   if (file.includes('/js/index.') && file.endsWith('.js')) {
-    source = source.replaceAll('i.p=environment.publicPath', 'i.p=globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href');
-    source = source.replaceAll('return(environment.subPath||"/")+"js/"+', 'return (globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href)+"js/"+');
-    source = source.replace(/:\"\/imgs\//g, ':globalThis.__HALO_DOCS_ASSET_BASE__+"imgs/');
-    source = source.replaceAll('url:environment.publicPath+"fonts/"+e.url.split("/").pop()', 'url:(globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href)+"fonts/"+e.url.split("/").pop()');
-    source = source.replace('let tj=(0,tr.M)("nbstore");', 'let tj=new URL((0,tr.M)("nbstore"),location.href);tj.searchParams.set("halo_docs_backend",globalThis.__HALO_DOCS_WORKER_BACKEND_BASE__||"/halo-docs-backend/");');
+    source = source.replaceAll(
+      'i.p=environment.publicPath',
+      'i.p=globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href'
+    );
+    source = source.replaceAll(
+      'return(environment.subPath||"/")+"js/"+',
+      'return (globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href)+"js/"+'
+    );
+    source = source.replace(
+      /:"\/imgs\//g,
+      ':globalThis.__HALO_DOCS_ASSET_BASE__+"imgs/'
+    );
+    source = source.replaceAll(
+      'url:environment.publicPath+"fonts/"+e.url.split("/").pop()',
+      'url:(globalThis.__HALO_DOCS_ASSET_BASE__||new URL("./",document.currentScript?.src||location.href).href)+"fonts/"+e.url.split("/").pop()'
+    );
+    source = source.replace(
+      'let tj=(0,tr.M)("nbstore");',
+      'let tj=new URL((0,tr.M)("nbstore"),location.href);tj.searchParams.set("halo_docs_backend",globalThis.__HALO_DOCS_WORKER_BACKEND_BASE__||"/halo-docs-backend/");'
+    );
   }
   if (file.includes('/js/nbstore-') && file.endsWith('.worker.js')) {
     // The nbstore worker owns its HTTP fetches and cannot see the page fetch
@@ -61,10 +96,22 @@ for (const file of textFiles) {
     // requests and Socket.IO.
     source = `globalThis.__HALO_DOCS_COMPILED_PACKAGE__=true;globalThis.__HALO_DOCS_BACKEND_BASE__=new URL(new URLSearchParams(globalThis.location.search).get("halo_docs_backend")||"/halo-docs-backend/",globalThis.location.origin).href;globalThis.__HALO_DOCS_BACKEND_REQUEST__=e=>new URL(String(e).replace(/^\\/+/,""),globalThis.__HALO_DOCS_BACKEND_BASE__.replace(/\\/?$/, "/")).href;globalThis.__HALO_DOCS_SOCKET_PATH__=new URL("socket.io",globalThis.__HALO_DOCS_BACKEND_BASE__.replace(/\\/?$/, "/")).pathname;\n${source}`;
     const workerRequest = 'globalThis.__HALO_DOCS_BACKEND_REQUEST__';
-    source = source.replaceAll('path:r?"/admin/api/cms/affine/socket.io":void 0', 'path:r?globalThis.__HALO_DOCS_SOCKET_PATH__:void 0');
-    source = source.replaceAll('new URL(e,this.serverBaseUrl)', `${workerRequest}(e)`);
-    source = source.replaceAll('new URL("/graphql",this.serverBaseUrl)', `${workerRequest}("/graphql")`);
-    source = source.replaceAll('new URL(e,this.options.serverBaseUrl)', `${workerRequest}(e)`);
+    source = source.replaceAll(
+      'path:r?"/admin/api/cms/affine/socket.io":void 0',
+      'path:r?globalThis.__HALO_DOCS_SOCKET_PATH__:void 0'
+    );
+    source = source.replaceAll(
+      'new URL(e,this.serverBaseUrl)',
+      `${workerRequest}(e)`
+    );
+    source = source.replaceAll(
+      'new URL("/graphql",this.serverBaseUrl)',
+      `${workerRequest}("/graphql")`
+    );
+    source = source.replaceAll(
+      'new URL(e,this.options.serverBaseUrl)',
+      `${workerRequest}(e)`
+    );
   }
   if (/\.(?:css|html)$/.test(file)) {
     source = source.replace(/(["'(])\/(?!\/)/g, '$1');
@@ -72,15 +119,61 @@ for (const file of textFiles) {
   writeFileSync(file, source);
 }
 
-writeFileSync(resolve(output, 'halo-docs-module.js'), `
+writeFileSync(
+  resolve(output, 'halo-docs-module.js'),
+  `
 const assets = ${JSON.stringify({ scripts, styles })};
 const assetBase = new URL('./', import.meta.url);
 globalThis.__HALO_DOCS_COMPILED_PACKAGE__ = true;
 globalThis.__HALO_DOCS_ASSET_BASE__ = assetBase.href;
-let ready;
-let donorUnmount;
-let persistentContainer;
-let activeTarget;
+const embeddedRuntime = globalThis.__HALO_DOCS_EMBED_RUNTIME__ ||= {};
+let ready = embeddedRuntime.ready;
+let donorUnmount = embeddedRuntime.donorUnmount;
+let persistentContainer = embeddedRuntime.persistentContainer ?? document.querySelector('[data-halo-docs-persistent-root]');
+let parkingContainer = embeddedRuntime.parkingContainer ?? document.querySelector('[data-halo-docs-parking-root]');
+let activeTarget = embeddedRuntime.activeTarget;
+const nextPaint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+function waitForStableContent() {
+  return new Promise(resolve => {
+    let quietTimer;
+    let maxTimer;
+    const observer = new MutationObserver(() => {
+      clearTimeout(quietTimer);
+      quietTimer = setTimeout(finish, 150);
+    });
+    const finish = () => {
+      clearTimeout(quietTimer);
+      clearTimeout(maxTimer);
+      observer.disconnect();
+      resolve();
+    };
+    observer.observe(persistentContainer, { childList: true, subtree: true, characterData: true });
+    quietTimer = setTimeout(finish, 150);
+    maxTimer = setTimeout(finish, 2000);
+  });
+}
+function ensureParkingContainer() {
+  if (parkingContainer) return parkingContainer;
+  parkingContainer = document.createElement('div');
+  parkingContainer.dataset.haloDocsParkingRoot = '';
+  parkingContainer.hidden = true;
+  document.body.append(parkingContainer);
+  embeddedRuntime.parkingContainer = parkingContainer;
+  return parkingContainer;
+}
+function attachPersistentContainer(target, visible = true) {
+  target.replaceChildren(persistentContainer);
+  Object.assign(persistentContainer.style, {
+    position: 'relative',
+    inset: 'auto',
+    width: '100%',
+    height: '100%',
+    minHeight: '0',
+    overflow: 'hidden',
+    visibility: visible ? 'visible' : 'hidden',
+    pointerEvents: visible ? 'auto' : 'none',
+  });
+}
 let nativeFetch;
 let bridgedFetch;
 function installRequestBridge(host, backendBase) {
@@ -122,6 +215,11 @@ function removeRequestBridge() {
 }
 function loadAssets() {
   if (ready) return ready;
+  if (globalThis.HaloDocsModule?.mount) {
+    ready = Promise.resolve();
+    embeddedRuntime.ready = ready;
+    return ready;
+  }
   ready = Promise.all([
     ...assets.styles.map(href => new Promise((resolve, reject) => {
       const link = document.createElement('link'); link.rel = 'stylesheet'; link.dataset.haloDocsStyle = ''; link.href = new URL(href.replace(/^\\//, ''), assetBase); link.onload = resolve; link.onerror = () => reject(new Error('HALO Docs stylesheet failed: ' + link.href)); document.head.append(link);
@@ -130,6 +228,7 @@ function loadAssets() {
       const script = document.createElement('script'); script.async = false; script.src = new URL(src.replace(/^\\//, ''), assetBase); script.onload = resolve; script.onerror = () => reject(new Error('HALO Docs script failed: ' + script.src)); document.head.append(script);
     })),
   ]);
+  embeddedRuntime.ready = ready;
   return ready;
 }
 function setInitialPath(options) {
@@ -154,44 +253,45 @@ function prefetchAssets() {
   return prefetchReady;
 }
 export async function mount(target, host) {
+  const mountGeneration = (embeddedRuntime.mountGeneration ?? 0) + 1;
+  embeddedRuntime.mountGeneration = mountGeneration;
   const options = host?.host ? host : { host };
   setInitialPath(options);
   // Install before evaluating donor scripts: AFFiNE captures fetch during
   // module initialization, before its React mount callback runs.
   installRequestBridge(options.host, options.backendBase);
   await loadAssets();
+  if (embeddedRuntime.mountGeneration !== mountGeneration) {
+    return () => unmount(target, mountGeneration);
+  }
   document.querySelectorAll('link[data-halo-docs-style]').forEach(link => { link.disabled = false; });
   if (!globalThis.HaloDocsModule?.mount) throw new Error('HALO Docs compiled entry did not initialize');
   if (!persistentContainer) {
     persistentContainer = document.createElement('div');
+    embeddedRuntime.persistentContainer = persistentContainer;
     persistentContainer.dataset.haloDocsPersistentRoot = '';
-    Object.assign(persistentContainer.style, {
-      width: '100%',
-      height: '100%',
-      minHeight: '0',
-      overflow: 'hidden',
-    });
-    target.replaceChildren(persistentContainer);
+    attachPersistentContainer(target, false);
     donorUnmount = globalThis.HaloDocsModule.mount(persistentContainer, options);
+    embeddedRuntime.donorUnmount = donorUnmount;
     window.addEventListener('pagehide', () => {
       donorUnmount?.();
       donorUnmount = undefined;
       removeRequestBridge();
     }, { once: true });
   } else {
-    // AFFiNE owns module-level framework, router, worker, and workbench
-    // singletons. Destroying its React root and mounting those same singletons
-    // again leaves the workbench visible but unsubscribed after the first CRM
-    // route transition. Preserve the original donor root and reattach it.
-    target.replaceChildren(persistentContainer);
-    globalThis.workbench?.openAll?.({
-      at: 'active',
-      replaceHistory: true,
-    });
+    attachPersistentContainer(target);
   }
   activeTarget = target;
-  requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
-  return () => unmount(target);
+  embeddedRuntime.activeTarget = target;
+  await waitForStableContent();
+  if (embeddedRuntime.mountGeneration !== mountGeneration) {
+    return () => unmount(target, mountGeneration);
+  }
+  persistentContainer.style.visibility = 'visible';
+  persistentContainer.style.pointerEvents = 'auto';
+  await nextPaint();
+  window.dispatchEvent(new Event('resize'));
+  return () => unmount(target, mountGeneration);
 }
 export async function preload(host) {
   if (host) {
@@ -203,15 +303,23 @@ export async function preload(host) {
   }
   await prefetchAssets();
 }
-export function unmount(target) {
-  if (target && activeTarget && target !== activeTarget) return;
-  persistentContainer?.remove();
+export function unmount(target, mountGeneration) {
+  if (mountGeneration !== undefined && mountGeneration !== embeddedRuntime.mountGeneration) return;
+  const currentTarget = embeddedRuntime.activeTarget;
+  if (target && currentTarget && target !== currentTarget) return;
+  if (persistentContainer) {
+    globalThis.workbench?.openAll?.({ at: 'active', replaceHistory: true });
+    persistentContainer.style.visibility = 'hidden';
+    persistentContainer.style.pointerEvents = 'none';
+    ensureParkingContainer().append(persistentContainer);
+  }
   activeTarget = undefined;
-  document.querySelectorAll('link[data-halo-docs-style]').forEach(link => { link.disabled = true; });
+  embeddedRuntime.activeTarget = undefined;
   delete globalThis.__HALO_DOCS_INITIAL_PATH__;
 }
 export const entry = ${JSON.stringify(mainScript)};
-`.trimStart());
+`.trimStart()
+);
 
 const files = readdirSync(output, { recursive: true })
   .map(file => String(file).replaceAll('\\', '/'))
@@ -220,19 +328,41 @@ const files = readdirSync(output, { recursive: true })
   .sort()
   .map(file => {
     const bytes = readFileSync(resolve(output, file));
-    return { path: file, bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') };
+    return {
+      path: file,
+      bytes: bytes.byteLength,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    };
   });
 
-writeFileSync(resolve(output, 'package-manifest.json'), JSON.stringify({
-  package: '@halo/docs-module',
-  entry: 'halo-docs-module.js',
-  html: 'index.html',
-  compiled: true,
-  sourceBoundary: 'Rspack output only; no AFFiNE source files are shipped',
-  assetBase: 'relative-to-entry-directory',
-  assets: { scripts, styles },
-  files,
-  preload: { host: 'HaloDocsHostContext', returns: 'Promise<void>' },
-  mount: { target: 'HTMLElement', host: 'HaloDocsHostContext', returns: 'Promise<() => void>' },
-}, null, 2));
-console.log(JSON.stringify({ output, entry: resolve(output, 'halo-docs-module.js'), assets: scripts.length + styles.length, files: files.length }));
+writeFileSync(
+  resolve(output, 'package-manifest.json'),
+  JSON.stringify(
+    {
+      package: '@halo/docs-module',
+      entry: 'halo-docs-module.js',
+      html: 'index.html',
+      compiled: true,
+      sourceBoundary: 'Rspack output only; no AFFiNE source files are shipped',
+      assetBase: 'relative-to-entry-directory',
+      assets: { scripts, styles },
+      files,
+      preload: { host: 'HaloDocsHostContext', returns: 'Promise<void>' },
+      mount: {
+        target: 'HTMLElement',
+        host: 'HaloDocsHostContext',
+        returns: 'Promise<() => void>',
+      },
+    },
+    null,
+    2
+  )
+);
+console.log(
+  JSON.stringify({
+    output,
+    entry: resolve(output, 'halo-docs-module.js'),
+    assets: scripts.length + styles.length,
+    files: files.length,
+  })
+);

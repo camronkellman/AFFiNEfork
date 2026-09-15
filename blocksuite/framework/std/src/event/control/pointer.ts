@@ -367,6 +367,11 @@ class DragController extends PointerControllerBase {
   listen() {
     const { host, disposables } = this._dispatcher;
     disposables.addFromEvent(host, 'pointerdown', this._down);
+    // A pointer can be cancelled, or capture can be lost, when a drag crosses
+    // an embedded browser surface. Treat either event as drag completion so
+    // tools cannot remain in a moving/selecting state indefinitely.
+    disposables.addFromEvent(document, 'pointercancel', this._up);
+    disposables.addFromEvent(host, 'lostpointercapture', this._up);
     this._applyScribblePatch();
 
     disposables.add(
@@ -621,6 +626,11 @@ export class PointerControl {
 
   listen() {
     this._startPolling();
+    const { host, disposables } = this._dispatcher;
+    const resizeObserver = new ResizeObserver(() => this._updateRect());
+    resizeObserver.observe(host);
+    disposables.add(() => resizeObserver.disconnect());
+    disposables.addFromEvent(window, 'resize', () => this._updateRect());
     this.controllers.forEach(controller => controller.listen());
   }
 }

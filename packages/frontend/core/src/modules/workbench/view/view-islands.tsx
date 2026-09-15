@@ -77,10 +77,13 @@ const ViewIsland = ({
   const [island] = useState<Island>(createIsland);
 
   useEffect(() => {
-    setter(prev => ({ ...prev, [id]: island }));
+    setter(prev => (prev[id] === island ? prev : { ...prev, [id]: island }));
 
     return () => {
       setter(prev => {
+        if (prev[id] !== island) {
+          return prev;
+        }
         const next = { ...prev };
         delete next[id];
         return next;

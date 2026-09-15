@@ -26,7 +26,13 @@ export enum DefaultModeDragType {
 export class DefaultTool extends BaseTool {
   static override toolName: string = 'default';
 
-  private _edgeScrollingTimer: number | null = null;
+  private _edgeScrollingFrame: number | null = null;
+
+  private _edgeScrollingDelta: IVec | null = null;
+
+  private _edgeScrollingLastTime: number | null = null;
+
+  private _selectionFrame: number | null = null;
 
   private readonly _clearDisposable = () => {
     if (this._disposables) {
@@ -37,6 +43,10 @@ export class DefaultTool extends BaseTool {
 
   private readonly _clearSelectingState = () => {
     this._stopEdgeScrolling();
+    if (this._selectionFrame !== null) {
+      cancelAnimationFrame(this._selectionFrame);
+      this._selectionFrame = null;
+    }
     this._clearDisposable();
   };
 
@@ -56,18 +66,45 @@ export class DefaultTool extends BaseTool {
   } = null;
 
   private readonly _enableEdgeScrolling = (delta: IVec) => {
-    this._stopEdgeScrolling();
-    this._scrollViewport(delta);
+    this._edgeScrollingDelta = delta;
+    if (this._edgeScrollingFrame !== null) return;
 
-    this._edgeScrollingTimer = window.setInterval(() => {
-      this._scrollViewport(delta);
-    }, 30);
+    // Preserve the donor's 30ms pan velocity while painting at the display's
+    // refresh rate. Applying the full delta every animation frame makes a 60Hz
+    // display pan almost twice as far and can skip past the intended objects.
+    this._scrollViewport(delta);
+    this._edgeScrollingLastTime = performance.now();
+
+    const scroll = (time: number) => {
+      const currentDelta = this._edgeScrollingDelta;
+      if (!currentDelta) {
+        this._edgeScrollingFrame = null;
+        this._edgeScrollingLastTime = null;
+        return;
+      }
+
+      const elapsed = Math.min(
+        50,
+        time - (this._edgeScrollingLastTime ?? time)
+      );
+      const velocityScale = elapsed / 30;
+      this._scrollViewport([
+        currentDelta[0] * velocityScale,
+        currentDelta[1] * velocityScale,
+      ]);
+      this._edgeScrollingLastTime = time;
+      this._edgeScrollingFrame = requestAnimationFrame(scroll);
+    };
+
+    this._edgeScrollingFrame = requestAnimationFrame(scroll);
   };
 
   private readonly _stopEdgeScrolling = () => {
-    if (this._edgeScrollingTimer) {
-      clearInterval(this._edgeScrollingTimer);
-      this._edgeScrollingTimer = null;
+    this._edgeScrollingDelta = null;
+    this._edgeScrollingLastTime = null;
+    if (this._edgeScrollingFrame !== null) {
+      cancelAnimationFrame(this._edgeScrollingFrame);
+      this._edgeScrollingFrame = null;
     }
   };
 
@@ -104,6 +141,20 @@ export class DefaultTool extends BaseTool {
     this.selection.set({
       elements: elements.map(el => el.id),
       editing: false,
+    });
+  };
+
+  private readonly _scheduleSelectionUpdate = () => {
+    if (this._selectionFrame !== null) return;
+
+    this._selectionFrame = requestAnimationFrame(() => {
+      this._selectionFrame = null;
+      if (
+        this.movementDragging &&
+        this.dragType === DefaultModeDragType.Selecting
+      ) {
+        this._updateSelection();
+      }
     });
   };
 
@@ -186,7 +237,7 @@ export class DefaultTool extends BaseTool {
             this.dragType === DefaultModeDragType.Selecting &&
             this.controller.dragging$.peek()
           ) {
-            this._updateSelection();
+            this._scheduleSelectionUpdate();
           }
         })
       );
@@ -243,7 +294,22 @@ export class DefaultTool extends BaseTool {
   override dragEnd(e: PointerEventState) {
     this.interactivity?.dispatchEvent('dragend', e);
 
-    if (this.selection.editing || !this.movementDragging) return;
+    // Always stop edge scrolling and pending selection work. In an embedded
+    // editor, focus can change while a marquee crosses interactive content;
+    // returning early here used to leave the edge-scroll loop running after
+    // pointer-up.
+    if (!this.movementDragging) {
+      this._clearSelectingState();
+      return;
+    }
+
+    if (this.dragType === DefaultModeDragType.Selecting) {
+      if (this._selectionFrame !== null) {
+        cancelAnimationFrame(this._selectionFrame);
+        this._selectionFrame = null;
+      }
+      this._updateSelection();
+    }
 
     this.movementDragging = false;
     this._toBeMoved = [];
@@ -262,7 +328,7 @@ export class DefaultTool extends BaseTool {
     switch (this.dragType) {
       case DefaultModeDragType.Selecting: {
         // Record the last drag pointer position for auto panning and view port updating
-        this._updateSelection();
+        this._scheduleSelectionUpdate();
         const moveDelta = calPanDelta(viewport, e);
         if (moveDelta) {
           this._enableEdgeScrolling(moveDelta);
@@ -292,6 +358,30 @@ export class DefaultTool extends BaseTool {
 
     // Determine the drag type based on the current state and event
     let dragType = this._determineDragType(e);
+
+    // Embedded content (PDFs, videos, synced docs, and other interactive
+    // blocks) can otherwise take ownership of the pointer while a box
+    // selection crosses it. Capture only an established marquee drag so a
+    // pointer-up over embedded content still completes the selection. This
+    // intentionally leaves clicks and element dragging on their native path.
+    if (
+      dragType === DefaultModeDragType.Selecting &&
+      (
+        globalThis as typeof globalThis & {
+          __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+        }
+      ).__HALO_DOCS_COMPILED_PACKAGE__
+    ) {
+      const pointerTarget = this.std.host;
+      if (pointerTarget.isConnected) {
+        try {
+          pointerTarget.setPointerCapture(e.raw.pointerId);
+        } catch {
+          // The browser releases pointer capture automatically if the source
+          // element disappears during a drag, so failing to capture is safe.
+        }
+      }
+    }
 
     const elements = this.selection.selectedElements;
     if (elements.some(e => e.isLocked())) return;

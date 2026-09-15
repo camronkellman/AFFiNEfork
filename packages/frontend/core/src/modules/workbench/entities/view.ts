@@ -113,7 +113,7 @@ export class View extends Entity<{
       replace?: boolean;
     } = {}
   ) {
-    const oldQueryStrings = queryString.parse(location.search, {
+    const oldQueryStrings = queryString.parse(this.history.location.search, {
       parseBooleans: true,
       parseNumbers: parseNumbers,
     });

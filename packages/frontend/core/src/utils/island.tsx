@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom';
 export const createIsland = () => {
   const targetLiveData$ = new LiveData<HTMLDivElement | null>(null);
   const provided$ = new LiveData<boolean>(false);
-  let mounted = false;
+  let mountedTarget: HTMLDivElement | null = null;
   return {
     id: nanoid(),
     Target: forwardRef(function IslandTarget(
@@ -23,13 +23,12 @@ export const createIsland = () => {
 
       useImperativeHandle(ref, () => target.current as HTMLDivElement, []);
       useEffect(() => {
-        if (mounted === true) {
-          throw new Error('Island should not be mounted more than once');
-        }
-        mounted = true;
-        targetLiveData$.next(target.current);
+        const element = target.current;
+        mountedTarget = element;
+        targetLiveData$.next(element);
         return () => {
-          mounted = false;
+          if (mountedTarget !== element) return;
+          mountedTarget = null;
           targetLiveData$.next(null);
         };
       }, []);

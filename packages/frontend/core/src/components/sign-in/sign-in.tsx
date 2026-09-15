@@ -28,6 +28,7 @@ import {
   type SetStateAction,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -76,13 +77,22 @@ export const SignInStep = ({
   const [isValidEmail, setIsValidEmail] = useState(true);
 
   const isHaloDocsEmbedded =
-    (globalThis as typeof globalThis & {
-      __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
-    }).__HALO_DOCS_COMPILED_PACKAGE__ === true;
+    (
+      globalThis as typeof globalThis & {
+        __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+      }
+    ).__HALO_DOCS_COMPILED_PACKAGE__ === true;
+  const initialOnSkip = useRef(onSkip);
 
   useEffect(() => {
-    if (isHaloDocsEmbedded) onSkip();
-  }, [isHaloDocsEmbedded, onSkip]);
+    const haloDocsGlobals = globalThis as typeof globalThis & {
+      __HALO_DOCS_SIGN_IN_BYPASSED__?: boolean;
+    };
+    if (isHaloDocsEmbedded && !haloDocsGlobals.__HALO_DOCS_SIGN_IN_BYPASSED__) {
+      haloDocsGlobals.__HALO_DOCS_SIGN_IN_BYPASSED__ = true;
+      initialOnSkip.current();
+    }
+  }, [isHaloDocsEmbedded]);
 
   const loginStatus = useLiveData(authService.session.status$);
 
