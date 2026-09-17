@@ -13,6 +13,7 @@ import { getViewManager } from '@affine/core/blocksuite/manager/view';
 import { useEnableAI } from '@affine/core/components/hooks/affine/use-enable-ai';
 import { ServerService } from '@affine/core/modules/cloud';
 import type { DocCustomPropertyInfo } from '@affine/core/modules/db';
+import { DocService } from '@affine/core/modules/doc';
 import type {
   DatabaseRow,
   DatabaseValueCell,
@@ -59,6 +60,48 @@ interface BlocksuiteEditorProps {
   shared?: boolean;
   defaultOpenProperty?: DefaultOpenProperty;
 }
+
+const DocDescription = ({
+  readonly,
+  shared,
+}: {
+  readonly?: boolean;
+  shared?: boolean;
+}) => {
+  const doc = useService(DocService).doc;
+  const meta = useLiveData(doc.meta$);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const description = meta.description ?? '';
+
+  useEffect(() => {
+    const input = descriptionRef.current;
+    if (!input) return;
+    input.style.height = '0px';
+    input.style.height = `${input.scrollHeight}px`;
+  }, [description]);
+
+  if ((readonly || shared) && !description) return null;
+
+  return (
+    <div
+      className={styles.docDescriptionContainer}
+      onPointerDown={event => event.stopPropagation()}
+    >
+      <textarea
+        ref={descriptionRef}
+        className={styles.docDescription}
+        aria-label="Page description"
+        placeholder="Add a description…"
+        value={description}
+        readOnly={readonly || shared}
+        rows={1}
+        onChange={event => {
+          doc.record.setMeta({ description: event.target.value });
+        }}
+      />
+    </div>
+  );
+};
 
 const usePatchSpecs = (mode: DocMode, shared?: boolean) => {
   const [reactToLit, portals] = useLitPortalFactory();
@@ -264,6 +307,9 @@ export const BlocksuiteDocEditor = forwardRef<
         ) : (
           <BlocksuiteEditorJournalDocTitle page={page} />
         )}
+        {!isJournal ? (
+          <DocDescription readonly={readonly} shared={shared} />
+        ) : null}
         {!shared && displayDocInfo ? (
           <div className={styles.docPropertiesTableContainer}>
             <WorkspacePropertiesTable

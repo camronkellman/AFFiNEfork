@@ -19,6 +19,7 @@ import {
   InformationIcon,
   MoreVerticalIcon,
   OpenInNewIcon,
+  ResizeTidyUpIcon,
   SplitViewIcon,
 } from '@blocksuite/icons/rc';
 import { useLiveData, useService } from '@toeverything/infra';
@@ -30,7 +31,19 @@ import { DocExplorerContext } from '../context';
 
 interface DocOperationProps {
   docId: string;
+  hasCover?: boolean;
+  onAdjustCover?: () => void;
 }
+
+const AdjustCover = ({ hasCover, onAdjustCover }: DocOperationProps) => {
+  if (!hasCover || !onAdjustCover) return null;
+
+  return (
+    <MenuItem prefixIcon={<ResizeTidyUpIcon />} onClick={onAdjustCover}>
+      Adjust cover
+    </MenuItem>
+  );
+};
 
 /**
  * Favorite Operation
@@ -188,6 +201,7 @@ const MoveToTrash = ({ docId }: DocOperationProps) => {
 export const MoreMenuContent = (props: DocOperationProps) => {
   return (
     <>
+      <AdjustCover {...props} />
       <ToggleFavorite {...props} />
       <DocInfo {...props} />
       <NewTab {...props} />
@@ -200,13 +214,21 @@ export const MoreMenuContent = (props: DocOperationProps) => {
 
 export const MoreMenu = ({
   docId,
+  hasCover,
+  onAdjustCover,
   children,
   contentOptions,
   ...menuProps
-}: Omit<MenuProps, 'items'> & { docId: string }) => {
+}: Omit<MenuProps, 'items'> & DocOperationProps) => {
   return (
     <Menu
-      items={<MoreMenuContent docId={docId} />}
+      items={
+        <MoreMenuContent
+          docId={docId}
+          hasCover={hasCover}
+          onAdjustCover={onAdjustCover}
+        />
+      }
       contentOptions={{
         ...contentOptions,
         onClick: e => {
@@ -229,6 +251,8 @@ export const MoreMenuButton = ({
 }: Omit<MenuProps, 'items' | 'children'> & {
   docId: string;
   iconProps?: IconButtonProps;
+  hasCover?: boolean;
+  onAdjustCover?: () => void;
 }) => {
   const contextValue = useContext(DocExplorerContext);
   const showMoreOperation = useLiveData(contextValue.showMoreOperation$);

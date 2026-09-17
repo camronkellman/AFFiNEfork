@@ -401,7 +401,9 @@ export const popViewOptions = (
                   Layout
                 </div>
               </div>
-              <div style="display:flex;gap:4px;margin-top:8px;">
+              <div
+                style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;"
+              >
                 ${viewTypeItems}
               </div>
             `;

@@ -52,6 +52,12 @@ const DocMetaSchema = z.object({
   title: z.string(),
   createDate: z.number(),
   tags: z.array(z.string()),
+  headerImage: z.string().optional(),
+  headerImagePosition: z.number().min(0).max(100).optional(),
+  headerImagePositionX: z.number().min(0).max(100).optional(),
+  headerImagePositionY: z.number().min(0).max(100).optional(),
+  headerImageZoom: z.number().min(1).max(2).optional(),
+  description: z.string().optional(),
 });
 
 export const DocSnapshotSchema: z.ZodType<DocSnapshot> = z.object({

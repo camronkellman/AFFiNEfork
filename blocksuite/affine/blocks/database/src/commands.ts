@@ -13,12 +13,20 @@ export const insertDatabaseBlockCommand: Command<
     viewType: string;
     place?: 'after' | 'before';
     removeEmptyLine?: boolean;
+    appendNewLine?: boolean;
   },
   {
     insertedDatabaseBlockId: string;
   }
 > = (ctx, next) => {
-  const { selectedModels, viewType, place, removeEmptyLine, std } = ctx;
+  const {
+    selectedModels,
+    viewType,
+    place,
+    removeEmptyLine,
+    appendNewLine,
+    std,
+  } = ctx;
   if (!selectedModels?.length) return;
 
   const targetModel =
@@ -37,7 +45,7 @@ export const insertDatabaseBlockCommand: Command<
 
   if (string == null) return;
 
-  initDatabaseBlock(std.store, targetModel, string, viewType, false);
+  initDatabaseBlock(std.store, targetModel, string, viewType, !!appendNewLine);
 
   if (removeEmptyLine && targetModel.text?.length === 0) {
     std.store.deleteBlock(targetModel);

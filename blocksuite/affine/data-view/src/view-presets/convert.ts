@@ -1,5 +1,6 @@
 import { createViewConvert } from '../core/view/convert.js';
 import { calendarViewModel } from './calendar/index.js';
+import { galleryViewModel } from './gallery/index.js';
 import { kanbanViewModel } from './kanban/index.js';
 import { tableViewModel } from './table/index.js';
 
@@ -41,5 +42,43 @@ export const viewConverts = [
     filter: data.filter,
     sort: data.sort,
     header: calendarCardToHeader(data.card),
+  })),
+  createViewConvert(tableViewModel, galleryViewModel, data => ({
+    filter: data.filter,
+    sort: data.sort,
+    header: data.header,
+  })),
+  createViewConvert(kanbanViewModel, galleryViewModel, data => ({
+    filter: data.filter,
+    sort: data.sort,
+    header: {
+      titleColumn: data.header?.titleColumn,
+      iconColumn: data.header?.iconColumn,
+      imageColumn: data.header?.coverColumn,
+    },
+  })),
+  createViewConvert(calendarViewModel, galleryViewModel, data => ({
+    filter: data.filter,
+    sort: data.sort,
+    header: calendarCardToHeader(data.card),
+  })),
+  createViewConvert(galleryViewModel, tableViewModel, data => ({
+    filter: data.filter,
+    sort: data.sort,
+    header: data.header,
+  })),
+  createViewConvert(galleryViewModel, kanbanViewModel, data => ({
+    filter: data.filter,
+    sort: data.sort,
+    header: {
+      titleColumn: data.header?.titleColumn,
+      iconColumn: data.header?.iconColumn,
+      coverColumn: data.card.coverColumnId,
+    },
+  })),
+  createViewConvert(galleryViewModel, calendarViewModel, data => ({
+    filter: data.filter,
+    sort: data.sort,
+    card: headerToCalendarCard(data.header),
   })),
 ];

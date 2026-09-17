@@ -73,6 +73,45 @@ export const docPropertiesTableContainer = style({
   justifyContent: 'center',
 });
 
+export const docDescriptionContainer = style({
+  width: '100%',
+  maxWidth: cssVar('editorWidth'),
+  boxSizing: 'border-box',
+  margin: '-24px auto 22px',
+  padding: `0 ${cssVar('editorSidePadding', '24px')}`,
+  '@container': {
+    [`viewport (width <= 640px)`]: {
+      padding: '0 16px',
+    },
+  },
+});
+
+export const docDescription = style({
+  display: 'block',
+  width: '100%',
+  minHeight: 24,
+  maxHeight: 96,
+  boxSizing: 'border-box',
+  padding: 0,
+  overflow: 'hidden',
+  resize: 'none',
+  border: 0,
+  outline: 0,
+  color: cssVar('textSecondaryColor'),
+  background: 'transparent',
+  fontFamily: 'var(--affine-font-family)',
+  fontSize: 16,
+  lineHeight: '24px',
+  selectors: {
+    '&::placeholder': {
+      color: cssVar('textDisableColor'),
+    },
+    '&:focus::placeholder': {
+      opacity: 0.55,
+    },
+  },
+});
+
 export const docPropertiesTable = style({
   display: 'flex',
   flexDirection: 'column',

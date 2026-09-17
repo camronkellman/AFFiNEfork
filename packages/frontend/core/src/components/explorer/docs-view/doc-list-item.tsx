@@ -14,12 +14,13 @@ import {
 import type { AffineDNDData } from '@affine/core/types/dnd';
 import { useI18n } from '@affine/i18n';
 import track from '@affine/track';
+import type { DocMeta } from '@blocksuite/affine/store';
 import {
   AutoTidyUpIcon,
   PropertyIcon,
   ResizeTidyUpIcon,
 } from '@blocksuite/icons/rc';
-import { useLiveData, useService } from '@toeverything/infra';
+import { LiveData, useLiveData, useService } from '@toeverything/infra';
 import {
   type HTMLProps,
   memo,
@@ -27,6 +28,9 @@ import {
   type SVGProps,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 
 import { PagePreview } from '../../page-list/page-content-preview';
@@ -35,6 +39,20 @@ import { quickActions } from '../quick-actions.constants';
 import * as styles from './doc-list-item.css';
 import { MoreMenuButton, MoreMenuContent } from './more-menu';
 import { CardViewProperties, ListViewProperties } from './properties';
+
+const emptyDocMeta$ = new LiveData<Partial<DocMeta>>({});
+
+type CardCoverDrag = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startPositionX: number;
+  startPositionY: number;
+  width: number;
+  height: number;
+};
+
+const clampCoverPosition = (value: number) => Math.min(100, Math.max(0, value));
 
 export type DocListItemView = 'list' | 'grid' | 'masonry';
 
@@ -390,7 +408,116 @@ export const CardViewDoc = ({ docId }: DocListItemProps) => {
   const selectMode = useLiveData(contextValue.selectMode$);
   const docsService = useService(DocsService);
   const doc = useLiveData(docsService.list.doc$(docId));
+  const docMeta = useLiveData(doc?.meta$ ?? emptyDocMeta$);
   const showMoreOperation = useLiveData(contextValue.showMoreOperation$);
+  const coverDragRef = useRef<CardCoverDrag | null>(null);
+  const coverPositionRef = useRef({ x: 50, y: 50 });
+  const [adjustingCover, setAdjustingCover] = useState(false);
+  const [coverPositionX, setCoverPositionX] = useState(50);
+  const [coverPositionY, setCoverPositionY] = useState(50);
+  const [coverZoom, setCoverZoom] = useState(1.2);
+
+  useEffect(() => {
+    const x = docMeta.headerImagePositionX ?? 50;
+    const y = docMeta.headerImagePositionY ?? docMeta.headerImagePosition ?? 50;
+    coverPositionRef.current = { x, y };
+    setCoverPositionX(x);
+    setCoverPositionY(y);
+    setCoverZoom(docMeta.headerImageZoom ?? 1.2);
+  }, [
+    docMeta.headerImage,
+    docMeta.headerImagePosition,
+    docMeta.headerImagePositionX,
+    docMeta.headerImagePositionY,
+    docMeta.headerImageZoom,
+  ]);
+
+  const startCoverAdjustment = useCallback(() => {
+    setAdjustingCover(true);
+  }, []);
+
+  const stopCardEvent = useCallback((event: React.SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
+  const startCoverDrag = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!adjustingCover) return;
+      if ((event.target as HTMLElement).closest('button')) return;
+      stopCardEvent(event);
+      const bounds = event.currentTarget.getBoundingClientRect();
+      coverDragRef.current = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startPositionX: coverPositionX,
+        startPositionY: coverPositionY,
+        width: bounds.width,
+        height: bounds.height,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    [adjustingCover, coverPositionX, coverPositionY, stopCardEvent]
+  );
+
+  const moveCover = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = coverDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      stopCardEvent(event);
+      const deltaX = ((event.clientX - drag.startClientX) / drag.width) * 500;
+      const deltaY = ((event.clientY - drag.startClientY) / drag.height) * 100;
+      const x = clampCoverPosition(drag.startPositionX - deltaX);
+      const y = clampCoverPosition(drag.startPositionY - deltaY);
+      coverPositionRef.current = { x, y };
+      setCoverPositionX(x);
+      setCoverPositionY(y);
+    },
+    [stopCardEvent]
+  );
+
+  const finishCoverDrag = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = coverDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      stopCardEvent(event);
+      coverDragRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      const { x, y } = coverPositionRef.current;
+      doc?.record.setMeta({
+        headerImagePosition: y,
+        headerImagePositionX: x,
+        headerImagePositionY: y,
+      });
+    },
+    [doc, stopCardEvent]
+  );
+
+  const changeCoverZoom = useCallback(
+    (event: React.MouseEvent, delta: number) => {
+      stopCardEvent(event);
+      const nextZoom = Math.min(
+        2,
+        Math.max(1, Number((coverZoom + delta).toFixed(1)))
+      );
+      setCoverZoom(nextZoom);
+      doc?.record.setMeta({ headerImageZoom: nextZoom });
+    },
+    [coverZoom, doc, stopCardEvent]
+  );
+
+  const finishCoverAdjustment = useCallback(
+    (event: React.MouseEvent) => {
+      stopCardEvent(event);
+      setAdjustingCover(false);
+    },
+    [stopCardEvent]
+  );
+
+  const coverTranslateX = ((50 - coverPositionX) / 50) * ((coverZoom - 1) * 50);
 
   if (!doc) {
     return null;
@@ -400,10 +527,70 @@ export const CardViewDoc = ({ docId }: DocListItemProps) => {
     <ContextMenu
       asChild
       disabled={!showMoreOperation}
-      items={<MoreMenuContent docId={docId} />}
+      items={
+        <MoreMenuContent
+          docId={docId}
+          hasCover={!!docMeta.headerImage}
+          onAdjustCover={startCoverAdjustment}
+        />
+      }
     >
       <li className={styles.cardViewRoot}>
         <DragHandle id={docId} className={styles.cardDragHandle} />
+        {docMeta.headerImage ? (
+          <div
+            className={styles.cardViewCoverViewport}
+            data-adjusting={adjustingCover || undefined}
+            onClick={adjustingCover ? stopCardEvent : undefined}
+            onPointerDown={startCoverDrag}
+            onPointerMove={moveCover}
+            onPointerUp={finishCoverDrag}
+            onPointerCancel={finishCoverDrag}
+          >
+            <img
+              className={styles.cardViewCover}
+              src={docMeta.headerImage}
+              alt=""
+              draggable={false}
+              style={{
+                objectPosition: `center ${coverPositionY}%`,
+                transform: `translateX(${coverTranslateX}%) scale(${coverZoom})`,
+              }}
+            />
+            {adjustingCover ? (
+              <div className={styles.cardCoverControls}>
+                <button
+                  className={styles.cardCoverControlButton}
+                  type="button"
+                  aria-label="Zoom cover out"
+                  disabled={coverZoom <= 1}
+                  onClick={event => changeCoverZoom(event, -0.1)}
+                >
+                  −
+                </button>
+                <span className={styles.cardCoverZoomValue}>
+                  {Math.round(coverZoom * 100)}%
+                </span>
+                <button
+                  className={styles.cardCoverControlButton}
+                  type="button"
+                  aria-label="Zoom cover in"
+                  disabled={coverZoom >= 2}
+                  onClick={event => changeCoverZoom(event, 0.1)}
+                >
+                  +
+                </button>
+                <button
+                  className={styles.cardCoverDoneButton}
+                  type="button"
+                  onClick={finishCoverAdjustment}
+                >
+                  Done
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <header className={styles.cardViewHeader}>
           <DocIcon id={docId} className={styles.cardViewIcon} />
           <DocTitle
@@ -411,25 +598,35 @@ export const CardViewDoc = ({ docId }: DocListItemProps) => {
             className={styles.cardViewTitle}
             data-testid="doc-list-item-title"
           />
-          {quickActions.map(action => {
-            return (
-              <Tooltip key={action.key} content={t.t(action.name)}>
-                <action.Component size="16" doc={doc} />
-              </Tooltip>
-            );
-          })}
-          {selectMode ? (
-            <Select id={docId} className={styles.cardViewCheckbox} />
-          ) : (
-            <MoreMenuButton
-              docId={docId}
-              contentOptions={cardMoreMenuContentOptions}
-              iconProps={{ size: '16' }}
-            />
-          )}
         </header>
-        <DocPreview id={docId} className={styles.cardPreviewContainer} />
-        <CardViewProperties docId={docId} />
+        {docMeta.description ? (
+          <div className={styles.cardPreviewContainer}>
+            {docMeta.description}
+          </div>
+        ) : null}
+        <footer className={styles.cardViewFooter}>
+          <CardViewProperties docId={docId} />
+          <div className={styles.cardViewActions}>
+            {quickActions.map(action => {
+              return (
+                <Tooltip key={action.key} content={t.t(action.name)}>
+                  <action.Component size="16" doc={doc} />
+                </Tooltip>
+              );
+            })}
+            {selectMode ? (
+              <Select id={docId} className={styles.cardViewCheckbox} />
+            ) : (
+              <MoreMenuButton
+                docId={docId}
+                hasCover={!!docMeta.headerImage}
+                onAdjustCover={startCoverAdjustment}
+                contentOptions={cardMoreMenuContentOptions}
+                iconProps={{ size: '16' }}
+              />
+            )}
+          </div>
+        </footer>
       </li>
     </ContextMenu>
   );

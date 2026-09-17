@@ -190,6 +190,9 @@ export function NormalPageHeader({ page, workspace }: PageHeaderProps) {
       <EditorModeSwitch />
       <BlocksuiteHeaderTitle inputHandleRef={titleInputHandleRef} />
       <TemplateMark />
+
+      <div className={styles.spacer} />
+
       <div className={styles.iconButtonContainer}>
         {hideCollect ? null : (
           <>
@@ -203,8 +206,6 @@ export function NormalPageHeader({ page, workspace }: PageHeaderProps) {
           containerWidth={containerWidth}
         />
       </div>
-
-      <div className={styles.spacer} />
 
       {!hidePresent ? <DetailPageHeaderPresentButton /> : null}
 

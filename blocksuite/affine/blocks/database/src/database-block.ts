@@ -7,7 +7,10 @@ import {
 import { DropIndicator } from '@blocksuite/affine-components/drop-indicator';
 import { PeekViewProvider } from '@blocksuite/affine-components/peek';
 import { toast } from '@blocksuite/affine-components/toast';
-import type { DatabaseBlockModel } from '@blocksuite/affine-model';
+import type {
+  DatabaseBlockModel,
+  ParagraphBlockModel,
+} from '@blocksuite/affine-model';
 import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@blocksuite/affine-shared/consts';
 import {
   BlockElementCommentManager,
@@ -34,7 +37,10 @@ import {
   type SingleView,
   uniMap,
 } from '@blocksuite/data-view';
-import { CalendarExternalSourceProvider } from '@blocksuite/data-view/view-presets';
+import {
+  CalendarExternalSourceProvider,
+  GalleryCoverProvider,
+} from '@blocksuite/data-view/view-presets';
 import { widgetPresets } from '@blocksuite/data-view/widget-presets';
 import { IS_MOBILE } from '@blocksuite/global/env';
 import { Rect } from '@blocksuite/global/gfx';
@@ -143,6 +149,46 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   private readonly dataSource = lazy(() => {
     const dataSource = new DatabaseBlockDataSource(this.model, dataSource => {
       dataSource.serviceSet(EditorHostKey, this.host);
+      const coverUrls = new Map<string, string>();
+      const resolveCover = async (
+        value: unknown
+      ): Promise<string | undefined> => {
+        if (typeof value === 'string') {
+          if (/^(data:|blob:|https?:)/.test(value)) return value;
+          const cached = coverUrls.get(value);
+          if (cached) return cached;
+          const blob = await this.host.store.blobSync.get(value);
+          if (!blob?.type.startsWith('image/')) return;
+          const url = URL.createObjectURL(blob);
+          coverUrls.set(value, url);
+          return url;
+        }
+        if (value && typeof value === 'object') {
+          const items = Object.values(value as Record<string, unknown>);
+          const image = items.find(item => {
+            if (!item || typeof item !== 'object') return false;
+            const mime = (item as { mime?: unknown }).mime;
+            return typeof mime !== 'string' || mime.startsWith('image/');
+          }) as { id?: unknown } | undefined;
+          return typeof image?.id === 'string'
+            ? resolveCover(image.id)
+            : undefined;
+        }
+        return;
+      };
+      dataSource.serviceSet(GalleryCoverProvider, {
+        resolve: resolveCover,
+        recordCover: rowId => {
+          const model = this.host.store.getBlock(rowId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          if (!model) return;
+          return {
+            source$: model.props['meta:cover$'],
+            position$: model.props['meta:coverPosition$'],
+          };
+        },
+      });
       this.std.provider
         .getAll(ExternalGroupByConfigProvider)
         .forEach(config => {
@@ -308,6 +354,13 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       widgetPresets.tools.viewOptions,
       widgetPresets.tools.tableAddRow,
     ],
+    gallery: [
+      widgetPresets.tools.filter,
+      widgetPresets.tools.sort,
+      widgetPresets.tools.search,
+      widgetPresets.tools.viewOptions,
+      widgetPresets.tools.tableAddRow,
+    ],
   });
 
   private readonly viewSelection$ = computed(() => {
@@ -366,8 +419,24 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
 
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
     this.classList.add(databaseBlockStyles);
+    queueMicrotask(() => this.ensureTrailingParagraph());
     this.listenFullWidthChange();
     this.handleMobileEditing();
+  }
+
+  private ensureTrailingParagraph() {
+    const store = this.model.store;
+    if (
+      !this.isConnected ||
+      store.readonly ||
+      this.std.get(DocModeProvider).getEditorMode() === 'edgeless' ||
+      store.getNext(this.model)
+    ) {
+      return;
+    }
+    const parent = store.getParent(this.model);
+    if (!parent) return;
+    store.addBlock('affine:paragraph', {}, parent.id);
   }
 
   listenFullWidthChange() {

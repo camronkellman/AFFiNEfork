@@ -1,4 +1,4 @@
-import { notify, toast, useConfirmModal } from '@affine/component';
+import { Checkbox, notify, toast, useConfirmModal } from '@affine/component';
 import {
   Menu,
   MenuItem,
@@ -148,6 +148,10 @@ const PageHeaderMenuItem = ({
   const editorService = useService(EditorService);
   const currentMode = useLiveData(editorService.editor.mode$);
   const primaryMode = useLiveData(editorService.editor.doc.primaryMode$);
+  const pageWidth = useLiveData(
+    editorService.editor.doc.properties$.selector(value => value.pageWidth)
+  );
+  const fullWidth = pageWidth === 'fullWidth';
 
   const workbench = useService(WorkbenchService).workbench;
   const openInAppService = useServiceOptional(OpenInAppService);
@@ -240,6 +244,13 @@ const PageHeaderMenuItem = ({
           : t['com.affine.toastMessage.defaultMode.page.message'](),
     });
   }, [primaryMode, editorService, t]);
+
+  const handleToggleFullWidth = useCallback(() => {
+    editorService.editor.doc.record.setProperty(
+      'pageWidth',
+      fullWidth ? 'standard' : 'fullWidth'
+    );
+  }, [editorService.editor.doc, fullWidth]);
 
   const exportHandler = useExportPage();
 
@@ -364,6 +375,16 @@ const PageHeaderMenuItem = ({
           ? t['com.affine.editorDefaultMode.edgeless']()
           : t['com.affine.editorDefaultMode.page']()}
       </MenuItem>
+      {currentMode === 'page' ? (
+        <MenuItem
+          prefixIcon={<Checkbox checked={fullWidth} />}
+          data-testid="editor-option-menu-full-width"
+          onSelect={handleToggleFullWidth}
+          disabled={!canEdit}
+        >
+          Full width
+        </MenuItem>
+      ) : null}
       <MenuItem
         data-testid="editor-option-menu-favorite"
         onSelect={handleToggleFavorite}

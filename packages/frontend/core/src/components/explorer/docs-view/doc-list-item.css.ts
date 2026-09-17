@@ -218,6 +218,85 @@ export const cardViewRoot = style({
     },
   },
 });
+export const cardViewCoverViewport = style({
+  position: 'relative',
+  width: 'calc(100% + 32px)',
+  height: 132,
+  margin: '-16px -16px 4px',
+  flexShrink: 0,
+  overflow: 'hidden',
+  borderBottom: `0.5px solid ${cssVarV2.layer.insideBorder.border}`,
+  selectors: {
+    '&[data-adjusting]': {
+      zIndex: 2,
+      cursor: 'grab',
+      touchAction: 'none',
+      userSelect: 'none',
+      boxShadow: `inset 0 0 0 2px ${cssVarV2.layer.insideBorder.primaryBorder}`,
+    },
+    '&[data-adjusting]:active': {
+      cursor: 'grabbing',
+    },
+  },
+});
+export const cardViewCover = style({
+  display: 'block',
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  transformOrigin: 'center',
+  willChange: 'transform, object-position',
+  pointerEvents: 'none',
+});
+export const cardCoverControls = style({
+  position: 'absolute',
+  right: 8,
+  bottom: 8,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 3,
+  padding: 3,
+  border: '1px solid rgba(255,255,255,.14)',
+  borderRadius: 7,
+  color: '#fff',
+  background: 'rgba(24,24,27,.88)',
+  boxShadow: '0 4px 14px rgba(0,0,0,.28)',
+});
+export const cardCoverControlButton = style({
+  minWidth: 26,
+  height: 26,
+  padding: '0 7px',
+  border: 0,
+  borderRadius: 4,
+  color: '#fff',
+  background: 'transparent',
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+  selectors: {
+    '&:hover:not(:disabled)': {
+      background: 'rgba(255,255,255,.1)',
+    },
+    '&:disabled': {
+      color: 'rgba(255,255,255,.35)',
+      cursor: 'default',
+    },
+  },
+});
+export const cardCoverZoomValue = style({
+  minWidth: 38,
+  color: 'rgba(255,255,255,.76)',
+  fontSize: 11,
+  textAlign: 'center',
+  pointerEvents: 'none',
+});
+export const cardCoverDoneButton = style([
+  cardCoverControlButton,
+  {
+    marginLeft: 4,
+    borderLeft: '1px solid rgba(255,255,255,.14)',
+    borderRadius: 0,
+  },
+]);
 export const cardViewHeader = style({
   display: 'flex',
   flexDirection: 'row',
@@ -253,6 +332,9 @@ export const cardPreviewContainer = style({
   flexGrow: 1,
   flexShrink: 1,
   overflow: 'hidden',
+  display: '-webkit-box',
+  WebkitBoxOrient: 'vertical',
+  WebkitLineClamp: 4,
 });
 export const cardViewCheckbox = style({
   width: 20,
@@ -261,6 +343,20 @@ export const cardViewCheckbox = style({
   padding: 2,
   color: cssVarV2.icon.primary,
   pointerEvents: 'none',
+});
+export const cardViewFooter = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  minHeight: 24,
+  marginTop: 'auto',
+});
+export const cardViewActions = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  marginLeft: 'auto',
+  flexShrink: 0,
 });
 export const cardDragHandle = style([
   dragHandle,

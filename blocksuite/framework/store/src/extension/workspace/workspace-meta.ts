@@ -18,6 +18,18 @@ export interface DocMeta {
   updatedDate?: number;
   favorite?: boolean;
   trash?: boolean;
+  /** Optional page cover stored as a URL or data URL. */
+  headerImage?: string;
+  /** Vertical focal point for the page cover, from 0 to 100. */
+  headerImagePosition?: number;
+  /** Horizontal focal point for the page cover, from 0 to 100. */
+  headerImagePositionX?: number;
+  /** Vertical focal point for the page cover, from 0 to 100. */
+  headerImagePositionY?: number;
+  /** Cover scale, where 1 is the original cover fit. */
+  headerImageZoom?: number;
+  /** Short, intentional summary shown beneath the title and on doc cards. */
+  description?: string;
 }
 
 export interface WorkspaceMeta {

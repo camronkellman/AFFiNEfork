@@ -41,4 +41,6 @@ export type BlockMeta = {
   'meta:createdBy'?: string;
   'meta:updatedAt'?: number;
   'meta:updatedBy'?: string;
+  'meta:cover'?: string;
+  'meta:coverPosition'?: number;
 };

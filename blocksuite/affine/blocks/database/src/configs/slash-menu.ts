@@ -6,6 +6,7 @@ import { viewPresets } from '@blocksuite/data-view/view-presets';
 import {
   DatabaseKanbanViewIcon,
   DatabaseTableViewIcon,
+  ImageIcon,
   TodayIcon,
 } from '@blocksuite/icons/lit';
 
@@ -35,6 +36,7 @@ export const databaseSlashMenuConfig: SlashMenuConfig = {
             viewType: viewPresets.tableViewMeta.type,
             place: 'after',
             removeEmptyLine: true,
+            appendNewLine: true,
           })
           .pipe(({ insertedDatabaseBlockId }) => {
             if (insertedDatabaseBlockId) {
@@ -49,11 +51,40 @@ export const databaseSlashMenuConfig: SlashMenuConfig = {
     },
 
     {
+      name: 'Gallery View',
+      description: 'Display database pages as visual cards.',
+      searchAlias: ['database', 'gallery', 'cards'],
+      icon: ImageIcon(),
+      group: '7_Database@1',
+      when: ({ model }) =>
+        !isInsideBlockByFlavour(model.store, model, 'affine:edgeless-text'),
+      action: ({ std }) => {
+        std.command
+          .chain()
+          .pipe(getSelectedModelsCommand)
+          .pipe(insertDatabaseBlockCommand, {
+            viewType: viewPresets.galleryViewMeta.type,
+            place: 'after',
+            removeEmptyLine: true,
+            appendNewLine: true,
+          })
+          .pipe(({ insertedDatabaseBlockId }) => {
+            if (insertedDatabaseBlockId) {
+              std.getOptional(TelemetryProvider)?.track('BlockCreated', {
+                blockType: 'affine:database',
+              });
+            }
+          })
+          .run();
+      },
+    },
+
+    {
       name: 'Calendar View',
       description: 'Display items by date in a calendar.',
       searchAlias: ['database', 'calendar'],
       icon: TodayIcon(),
-      group: '7_Database@1',
+      group: '7_Database@2',
       when: ({ model }) =>
         !isInsideBlockByFlavour(model.store, model, 'affine:edgeless-text'),
       action: ({ std }) => {
@@ -64,6 +95,7 @@ export const databaseSlashMenuConfig: SlashMenuConfig = {
             viewType: viewPresets.calendarViewMeta.type,
             place: 'after',
             removeEmptyLine: true,
+            appendNewLine: true,
           })
           .pipe(({ insertedDatabaseBlockId }) => {
             if (insertedDatabaseBlockId) {
@@ -86,7 +118,7 @@ export const databaseSlashMenuConfig: SlashMenuConfig = {
         figure: KanbanViewTooltip,
         caption: 'Kanban View',
       },
-      group: '7_Database@2',
+      group: '7_Database@3',
       when: ({ model }) =>
         !isInsideBlockByFlavour(model.store, model, 'affine:edgeless-text'),
       action: ({ std }) => {
@@ -97,6 +129,7 @@ export const databaseSlashMenuConfig: SlashMenuConfig = {
             viewType: viewPresets.kanbanViewMeta.type,
             place: 'after',
             removeEmptyLine: true,
+            appendNewLine: true,
           })
           .pipe(({ insertedDatabaseBlockId }) => {
             if (insertedDatabaseBlockId) {
