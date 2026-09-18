@@ -155,6 +155,8 @@ export class ListBlockComponent extends CaptionedBlockComponent<ListBlockModel> 
     });
 
     const childrenId = `list-children-${this.model.id}`;
+    const toggleLevel =
+      model.props.type === 'toggle' ? model.props.toggleLevel : undefined;
     const children = html`<div
       id=${childrenId}
       class="affine-block-children-container"
@@ -167,7 +169,11 @@ export class ListBlockComponent extends CaptionedBlockComponent<ListBlockModel> 
     </div>`;
 
     return html`
-      <div class=${'affine-list-block-container'} style="${textAlignStyle}">
+      <div
+        class=${'affine-list-block-container'}
+        data-toggle-level=${toggleLevel ?? nothing}
+        style="${textAlignStyle}"
+      >
         <div
           class=${classMap({
             'affine-list-rich-text-wrapper': true,

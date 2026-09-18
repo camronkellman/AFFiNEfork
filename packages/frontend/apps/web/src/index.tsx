@@ -6,8 +6,8 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './app';
 import {
-  HaloDocsModuleRoot,
   type HaloDocsHostContext,
+  HaloDocsModuleRoot,
 } from './halo-module-contract';
 
 export interface HaloDocsMountOptions {
@@ -19,6 +19,7 @@ export interface HaloDocsMountOptions {
 type HaloDocsGlobals = typeof globalThis & {
   __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
   __HALO_DOCS_INITIAL_PATH__?: string;
+  __HALO_DOCS_HOST__?: HaloDocsHostContext;
   HaloDocsModule?: { mount: typeof mountHaloDocs };
 };
 
@@ -62,8 +63,10 @@ export function mountHaloDocs(
   options: HaloDocsMountOptions
 ) {
   const globals = globalThis as HaloDocsGlobals;
+  globals.__HALO_DOCS_HOST__ = options.host;
   globals.__HALO_DOCS_INITIAL_PATH__ =
-    options.initialPath ?? `/workspace/${options.host.identity.workspaceId}/all`;
+    options.initialPath ??
+    `/workspace/${options.host.identity.workspaceId}/all`;
   // The compiled-package loader installs its bridge before evaluating this
   // bundle because AFFiNE captures fetch during module initialization.
   const removeRequestBridge = globals.__HALO_DOCS_COMPILED_PACKAGE__
@@ -80,6 +83,9 @@ export function mountHaloDocs(
     root.unmount();
     removeRequestBridge();
     delete globals.__HALO_DOCS_INITIAL_PATH__;
+    if (globals.__HALO_DOCS_HOST__ === options.host) {
+      delete globals.__HALO_DOCS_HOST__;
+    }
   };
 }
 

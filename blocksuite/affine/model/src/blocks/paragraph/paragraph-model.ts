@@ -40,6 +40,10 @@ export const ParagraphBlockSchema = defineBlockSchema({
     'meta:updatedBy': undefined,
     'meta:cover': undefined,
     'meta:coverPosition': undefined,
+    'meta:galleryCoverPositionX': undefined,
+    'meta:galleryCoverPositionY': undefined,
+    'meta:galleryCoverZoom': undefined,
+    'meta:description': undefined,
   }),
   metadata: {
     version: 1,

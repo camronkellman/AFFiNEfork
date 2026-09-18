@@ -98,7 +98,9 @@ export const docDescription = style({
   border: 0,
   outline: 0,
   color: cssVar('textSecondaryColor'),
-  background: 'transparent',
+  background: `${cssVar('backgroundPrimaryColor')} !important`,
+  appearance: 'none',
+  boxShadow: 'none',
   fontFamily: 'var(--affine-font-family)',
   fontSize: 16,
   lineHeight: '24px',
@@ -108,6 +110,14 @@ export const docDescription = style({
     },
     '&:focus::placeholder': {
       opacity: 0.55,
+    },
+    '&:focus, &:focus-visible': {
+      background: `${cssVar('backgroundPrimaryColor')} !important`,
+      boxShadow: 'none',
+    },
+    '&::selection': {
+      color: 'inherit',
+      background: 'transparent',
     },
   },
 });

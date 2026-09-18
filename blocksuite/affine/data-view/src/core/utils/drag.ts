@@ -35,9 +35,13 @@ export const startDrag = <
   const clear = () => {
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', cancel);
     window.removeEventListener('keydown', keydown);
     document.body.style.cursor = oldCursor;
     ops.onClear();
+  };
+  const cancel = () => {
+    clear();
   };
   const keydown = (evt: KeyboardEvent) => {
     if (evt.key === 'Escape') {
@@ -63,6 +67,7 @@ export const startDrag = <
   };
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', cancel);
   window.addEventListener('keydown', keydown);
 
   return result;

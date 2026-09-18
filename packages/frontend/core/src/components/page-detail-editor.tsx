@@ -198,7 +198,7 @@ export const PageDetailEditor = ({
     (delta: number) => {
       const nextZoom = Math.min(
         2,
-        Math.max(1, Number((coverZoom + delta).toFixed(1)))
+        Math.max(0.5, Number((coverZoom + delta).toFixed(1)))
       );
       setCoverZoom(nextZoom);
       doc.record.setMeta({ headerImageZoom: nextZoom });
@@ -260,7 +260,7 @@ export const PageDetailEditor = ({
                       className={styles.coverZoomButton}
                       type="button"
                       aria-label="Zoom cover out"
-                      disabled={coverZoom <= 1}
+                      disabled={coverZoom <= 0.5}
                       onClick={() => changeCoverZoom(-0.1)}
                     >
                       −

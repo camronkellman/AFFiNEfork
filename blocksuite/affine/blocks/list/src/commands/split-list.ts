@@ -134,6 +134,7 @@ export const splitListCommand: Command<{
         {
           type: model.props.type,
           text: afterText,
+          toggleLevel: model.props.toggleLevel,
           order:
             model.props.type === 'numbered' && model.props.order !== null
               ? model.props.order + 1
@@ -178,6 +179,7 @@ export const splitListCommand: Command<{
         {
           type: model.props.type,
           text: afterText,
+          toggleLevel: model.props.toggleLevel,
           order: model.props.type === 'numbered' ? 1 : null,
         },
         model,
@@ -229,6 +231,7 @@ export const splitListCommand: Command<{
       {
         type: model.props.type,
         text: afterText,
+        toggleLevel: model.props.toggleLevel,
         order: null,
       },
       parent,

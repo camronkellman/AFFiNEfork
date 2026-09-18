@@ -12,7 +12,10 @@ import {
 } from '@affine/core/modules/collection';
 import { CollectionRulesService } from '@affine/core/modules/collection-rules';
 import type { FilterParams } from '@affine/core/modules/collection-rules/types';
-import { WorkspaceLocalState } from '@affine/core/modules/workspace';
+import {
+  WorkspaceLocalState,
+  WorkspaceService,
+} from '@affine/core/modules/workspace';
 import { useI18n } from '@affine/i18n';
 import { useLiveData, useService } from '@toeverything/infra';
 import { useCallback, useEffect, useState } from 'react';
@@ -181,8 +184,22 @@ export const AllPage = () => {
   const { openPromptModal } = usePromptModal();
 
   const collectionRulesService = useService(CollectionRulesService);
+  const workspaceService = useService(WorkspaceService);
   useEffect(() => {
-    const subscription = collectionRulesService
+    let latestGroups: { key: string; items: string[] }[] = [];
+    const publishVisibleGroups = () => {
+      explorerContextValue.groups$.next(
+        latestGroups.map(group => ({
+          ...group,
+          items: group.items.filter(
+            id =>
+              !workspaceService.workspace.docCollection.meta.getDocMeta(id)
+                ?.databaseRecord
+          ),
+        }))
+      );
+    };
+    const rulesSubscription = collectionRulesService
       .watch(
         selectedCollectionInfo
           ? {
@@ -238,14 +255,20 @@ export const AllPage = () => {
       )
       .subscribe({
         next: result => {
-          explorerContextValue.groups$.next(result.groups);
+          latestGroups = result.groups;
+          publishVisibleGroups();
         },
         error: error => {
           console.error(error);
         },
       });
+    const metaSubscription =
+      workspaceService.workspace.docCollection.meta.docMetaUpdated.subscribe(
+        publishVisibleGroups
+      );
     return () => {
-      subscription.unsubscribe();
+      rulesSubscription.unsubscribe();
+      metaSubscription.unsubscribe();
     };
   }, [
     collectionRulesService,
@@ -255,6 +278,7 @@ export const AllPage = () => {
     selectedCollection,
     selectedCollectionInfo,
     tempFilters,
+    workspaceService,
   ]);
 
   useEffect(() => {

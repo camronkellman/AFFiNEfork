@@ -7,6 +7,8 @@ import {
 import { Subject } from 'rxjs';
 import type * as Y from 'yjs';
 
+import { getHaloDocsIdentity } from '../../../utils/halo-docs-access';
+
 type MetaState = {
   pages?: unknown[];
   properties?: DocsPropertiesMeta;
@@ -143,15 +145,20 @@ export class WorkspaceMetaImpl implements WorkspaceMeta {
 
   addDocMeta(doc: DocMeta, index?: number) {
     this._assertValidDocTitle(doc);
+    const ownerId = getHaloDocsIdentity()?.userId;
+    const ownedDoc =
+      ownerId && !doc.haloCreatedByUserId
+        ? { ...doc, haloCreatedByUserId: ownerId }
+        : doc;
     this._doc.transact(() => {
       if (!this.docs) {
         return;
       }
       const docs = this.docs as unknown[];
       if (index === undefined) {
-        docs.push(doc);
+        docs.push(ownedDoc);
       } else {
-        docs.splice(index, 0, doc);
+        docs.splice(index, 0, ownedDoc);
       }
     }, this._doc.clientID);
   }

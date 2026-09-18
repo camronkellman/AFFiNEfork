@@ -30,6 +30,14 @@ export interface DocMeta {
   headerImageZoom?: number;
   /** Short, intentional summary shown beneath the title and on doc cards. */
   description?: string;
+  /** True when this document belongs to a database row instead of All Docs. */
+  databaseRecord?: boolean;
+  /** The document containing the owning database block. */
+  databaseRecordParentDocId?: string;
+  /** The owning database block. */
+  databaseRecordDatabaseId?: string;
+  /** The database row represented by this document. */
+  databaseRecordRowId?: string;
 }
 
 export interface WorkspaceMeta {

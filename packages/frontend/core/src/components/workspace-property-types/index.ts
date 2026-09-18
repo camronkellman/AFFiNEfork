@@ -12,6 +12,7 @@ import {
   HistoryIcon,
   LongerIcon,
   MemberIcon,
+  MultiPeopleIcon,
   NumberIcon,
   PropertyIcon,
   TagIcon,
@@ -82,6 +83,7 @@ import {
   PageWidthGroupHeader,
   PageWidthValue,
 } from './page-width';
+import { RoleAccessValue } from './role-access';
 import {
   TagsDocListProperty,
   TagsFilterValue,
@@ -349,6 +351,13 @@ export const WorkspacePropertyTypes = {
     },
     filterValue: PageWidthFilterValue,
     defaultFilter: { method: 'is', value: 'fullWidth' },
+  },
+  roleAccess: {
+    icon: MultiPeopleIcon,
+    value: RoleAccessValue,
+    name: 'Visible to roles',
+    description: 'Choose which HALO roles can view this page',
+    renameable: false,
   },
   template: {
     icon: TemplateIcon,

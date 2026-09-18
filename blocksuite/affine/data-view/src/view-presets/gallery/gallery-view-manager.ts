@@ -12,8 +12,21 @@ export interface GalleryCoverResolver {
     | {
         source$: ReadonlySignal<string | undefined>;
         position$: ReadonlySignal<number | undefined>;
+        positionX$: ReadonlySignal<number | undefined>;
+        positionY$: ReadonlySignal<number | undefined>;
+        zoom$: ReadonlySignal<number | undefined>;
       }
     | undefined;
+  recordDescription?(rowId: string): ReadonlySignal<string | undefined>;
+  setRecordCover?(rowId: string, source?: string): void;
+  setRecordCoverTransform?(
+    rowId: string,
+    transform: { x: number; y: number; zoom: number }
+  ): void;
+  duplicateRecord?(
+    rowId: string
+  ): string | undefined | Promise<string | undefined>;
+  deleteRecord?(rowId: string): void;
 }
 
 export const GalleryCoverProvider = createIdentifier<GalleryCoverResolver>(

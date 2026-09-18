@@ -11,7 +11,10 @@ import type {
   DatabaseBlockModel,
   ParagraphBlockModel,
 } from '@blocksuite/affine-model';
-import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@blocksuite/affine-shared/consts';
+import {
+  EDGELESS_TOP_CONTENTEDITABLE_SELECTOR,
+  REFERENCE_NODE,
+} from '@blocksuite/affine-shared/consts';
 import {
   BlockElementCommentManager,
   CommentProviderIdentifier,
@@ -21,6 +24,8 @@ import {
   type TelemetryEventMap,
   TelemetryProvider,
 } from '@blocksuite/affine-shared/services';
+import type { AffineTextAttributes } from '@blocksuite/affine-shared/types';
+import { createDefaultDoc } from '@blocksuite/affine-shared/utils';
 import { getDropResult } from '@blocksuite/affine-widget-drag-handle';
 import {
   createRecordDetail,
@@ -52,7 +57,7 @@ import {
 } from '@blocksuite/icons/lit';
 import { type BlockComponent, BlockSelection } from '@blocksuite/std';
 import { RANGE_SYNC_EXCLUDE_ATTR } from '@blocksuite/std/inline';
-import { Slice } from '@blocksuite/store';
+import { type BaseTextAttributes, Slice, Text } from '@blocksuite/store';
 import { autoUpdate } from '@floating-ui/dom';
 import { computed, signal } from '@preact/signals-core';
 import { html, nothing } from 'lit';
@@ -186,7 +191,160 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
           return {
             source$: model.props['meta:cover$'],
             position$: model.props['meta:coverPosition$'],
+            positionX$: model.props['meta:galleryCoverPositionX$'],
+            positionY$: model.props['meta:galleryCoverPositionY$'],
+            zoom$: model.props['meta:galleryCoverZoom$'],
           };
+        },
+        recordDescription: rowId => {
+          const model = this.host.store.getBlock(rowId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          return model?.props['meta:description$'];
+        },
+        setRecordCover: (rowId, source) => {
+          const model = this.host.store.getBlock(rowId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          if (!model) return;
+          this.host.store.updateBlock(model, {
+            'meta:cover': source,
+            'meta:coverPosition': source ? 50 : undefined,
+            'meta:galleryCoverPositionX': source ? 50 : undefined,
+            'meta:galleryCoverPositionY': source ? 50 : undefined,
+            'meta:galleryCoverZoom': source ? 1 : undefined,
+          });
+          const docId = getSingleDocIdFromText(model.text);
+          if (docId) {
+            this.host.store.workspace.meta.setDocMeta(docId, {
+              headerImage: source,
+              headerImagePosition: source ? 50 : undefined,
+              headerImagePositionX: source ? 50 : undefined,
+              headerImagePositionY: source ? 50 : undefined,
+              headerImageZoom: source ? 1.2 : undefined,
+            });
+          }
+        },
+        setRecordCoverTransform: (rowId, transform) => {
+          const model = this.host.store.getBlock(rowId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          if (!model) return;
+          this.host.store.updateBlock(model, {
+            'meta:coverPosition': transform.y,
+            'meta:galleryCoverPositionX': transform.x,
+            'meta:galleryCoverPositionY': transform.y,
+            'meta:galleryCoverZoom': transform.zoom,
+          });
+        },
+        duplicateRecord: async rowId => {
+          const source = this.host.store.getBlock(rowId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          if (!source) return;
+          const sourceIndex = this.model.children.findIndex(
+            child => child.id === rowId
+          );
+          const duplicateId = dataSource.rowAdd(sourceIndex + 1);
+          const duplicate = this.host.store.getBlock(duplicateId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          if (!duplicate) return;
+          this.host.store.updateBlock(duplicate, {
+            text: new Text(source.text?.toString() ?? ''),
+            'meta:cover': source.props['meta:cover'],
+            'meta:coverPosition': source.props['meta:coverPosition'],
+            'meta:galleryCoverPositionX':
+              source.props['meta:galleryCoverPositionX'],
+            'meta:galleryCoverPositionY':
+              source.props['meta:galleryCoverPositionY'],
+            'meta:galleryCoverZoom': source.props['meta:galleryCoverZoom'],
+            'meta:description': source.props['meta:description'],
+          });
+          dataSource.properties$.value.forEach(propertyId => {
+            if (propertyId === 'title' || propertyId === 'type') return;
+            const value = dataSource.cellValueGet(rowId, propertyId);
+            if (value === undefined) return;
+            try {
+              dataSource.cellValueChange(
+                duplicateId,
+                propertyId,
+                structuredClone(value)
+              );
+            } catch {
+              dataSource.cellValueChange(duplicateId, propertyId, value);
+            }
+          });
+          const sourceDocId = getSingleDocIdFromText(source.text);
+          if (sourceDocId) {
+            const workspace = this.host.store.workspace;
+            const sourceDoc = workspace
+              .getDoc(sourceDocId)
+              ?.getStore({ id: sourceDocId });
+            if (sourceDoc) {
+              sourceDoc.load();
+              const title =
+                workspace.meta.getDocMeta(sourceDocId)?.title ??
+                source.text?.toString() ??
+                '';
+              const duplicateDoc = createDefaultDoc(workspace, { title });
+              const snapshot = sourceDoc
+                .getTransformer()
+                .sliceToSnapshot(
+                  Slice.fromModels(sourceDoc, [
+                    ...(sourceDoc.root?.children ?? []),
+                  ])
+                );
+              if (snapshot && duplicateDoc.root) {
+                duplicateDoc.root.children.forEach(child =>
+                  duplicateDoc.deleteBlock(child)
+                );
+                await duplicateDoc
+                  .getTransformer()
+                  .snapshotToSlice(
+                    snapshot,
+                    duplicateDoc,
+                    duplicateDoc.root.id
+                  );
+              }
+              duplicate.text?.replace(
+                0,
+                duplicate.text.length,
+                REFERENCE_NODE,
+                {
+                  reference: {
+                    type: 'LinkedPage',
+                    pageId: duplicateDoc.id,
+                  },
+                } satisfies AffineTextAttributes as BaseTextAttributes
+              );
+              const sourceMeta = workspace.meta.getDocMeta(sourceDocId);
+              workspace.meta.setDocMeta(duplicateDoc.id, {
+                title,
+                headerImage: sourceMeta?.headerImage,
+                headerImagePosition: sourceMeta?.headerImagePosition,
+                headerImagePositionX: sourceMeta?.headerImagePositionX,
+                headerImagePositionY: sourceMeta?.headerImagePositionY,
+                headerImageZoom: sourceMeta?.headerImageZoom,
+                description: sourceMeta?.description,
+                databaseRecord: true,
+                databaseRecordParentDocId: this.model.store.id,
+                databaseRecordDatabaseId: this.model.id,
+                databaseRecordRowId: duplicateId,
+              });
+            }
+          }
+          return duplicateId;
+        },
+        deleteRecord: rowId => {
+          const row = this.host.store.getBlock(rowId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          const docId = getSingleDocIdFromText(row?.text);
+          if (docId) {
+            this.host.store.workspace.meta.setDocMeta(docId, { trash: true });
+          }
+          dataSource.rowDelete([rowId]);
         },
       });
       this.std.provider
@@ -419,9 +577,82 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
 
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
     this.classList.add(databaseBlockStyles);
-    queueMicrotask(() => this.ensureTrailingParagraph());
+    queueMicrotask(() => {
+      this.ensureTrailingParagraph();
+      this.markLinkedRowsAsDatabaseRecords();
+    });
     this.listenFullWidthChange();
     this.handleMobileEditing();
+    this.disposables.add(
+      this.model.store.workspace.meta.docMetaUpdated.subscribe(() =>
+        this.syncLinkedRowPageMetadata()
+      )
+    );
+  }
+
+  private markLinkedRowsAsDatabaseRecords() {
+    const meta = this.model.store.workspace.meta;
+    this.model.children.forEach(row => {
+      const docId = getSingleDocIdFromText(row.text);
+      if (!docId || meta.getDocMeta(docId)?.databaseRecord) return;
+      meta.setDocMeta(docId, {
+        databaseRecord: true,
+        databaseRecordParentDocId: this.model.store.id,
+        databaseRecordDatabaseId: this.model.id,
+        databaseRecordRowId: row.id,
+      });
+    });
+    this.syncLinkedRowPageMetadata();
+  }
+
+  private syncLinkedRowPageMetadata() {
+    if (this.model.store.readonly) return;
+    const meta = this.model.store.workspace.meta;
+    this.model.children.forEach(row => {
+      const docId = getSingleDocIdFromText(row.text);
+      if (!docId) return;
+      const docMeta = meta.getDocMeta(docId);
+      if (!docMeta) return;
+      const paragraph = row as ParagraphBlockModel;
+      const nextCover = docMeta.headerImage;
+      if (
+        paragraph.props['meta:cover'] === nextCover &&
+        paragraph.props['meta:description'] === docMeta.description
+      ) {
+        return;
+      }
+      this.model.store.updateBlock(paragraph, {
+        'meta:cover': nextCover,
+        'meta:description': docMeta.description,
+      });
+    });
+  }
+
+  private createGalleryRecordPage(rowId: string) {
+    const row = this.model.store.getBlock(rowId)?.model as
+      | ParagraphBlockModel
+      | undefined;
+    if (!row) return;
+    const title = row.text?.toString() ?? '';
+    const page = createDefaultDoc(this.model.store.workspace, { title });
+    row.text?.replace(0, row.text.length, REFERENCE_NODE, {
+      reference: {
+        type: 'LinkedPage',
+        pageId: page.id,
+      },
+    } satisfies AffineTextAttributes as BaseTextAttributes);
+    this.model.store.workspace.meta.setDocMeta(page.id, {
+      databaseRecord: true,
+      databaseRecordParentDocId: this.model.store.id,
+      databaseRecordDatabaseId: this.model.id,
+      databaseRecordRowId: rowId,
+      headerImage: row.props['meta:cover'],
+      headerImagePosition: 50,
+      headerImagePositionX: 50,
+      headerImagePositionY: 50,
+      headerImageZoom: 1.2,
+    });
+    return page.id;
   }
 
   private ensureTrailingParagraph() {
@@ -547,6 +778,10 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
               );
               if (doc) {
                 return openDoc(doc);
+              }
+              if (data.view.type === 'gallery') {
+                const pageId = this.createGalleryRecordPage(data.rowId);
+                if (pageId) return openDoc(pageId);
               }
               const abort = new AbortController();
               return new Promise<void>(focusBack => {

@@ -20,7 +20,7 @@ import {
   SlashMenuConfigExtension,
   type SlashMenuItem,
 } from '@blocksuite/affine-widget-slash-menu';
-import { HeadingsIcon } from '@blocksuite/icons/lit';
+import { HeadingsIcon, ToggleRightIcon } from '@blocksuite/icons/lit';
 import { BlockSelection } from '@blocksuite/std';
 
 import { updateBlockAlign, updateBlockType } from '../commands';
@@ -65,6 +65,13 @@ const noteSlashMenuConfig: SlashMenuConfig = {
       .map((config, index) =>
         createConversionItem(config, `1_List@${index++}`)
       ),
+    createToggleListItem('Toggle List', 0, 3, ['togglelist', 'toggle']),
+    ...([1, 2, 3, 4] as const).map((level, index) =>
+      createToggleListItem(`Toggle List ${index + 1}`, level, index + 4, [
+        `togglelist${index + 1}`,
+        `toggleheading${index + 1}`,
+      ])
+    ),
 
     ...textAlignConfigs.map((config, index) =>
       createAlignItem(config, `2_Align@${index++}`)
@@ -77,6 +84,28 @@ const noteSlashMenuConfig: SlashMenuConfig = {
       ),
   ],
 };
+
+function createToggleListItem(
+  name: string,
+  toggleLevel: 0 | 1 | 2 | 3 | 4,
+  index: number,
+  searchAlias: string[]
+): SlashMenuActionItem {
+  return {
+    name,
+    description: 'Create a collapsible list for nested blocks.',
+    icon: ToggleRightIcon(),
+    searchAlias,
+    group: `1_List@${index}`,
+    when: ({ model }) => model.store.schema.flavourSchemaMap.has('affine:list'),
+    action: ({ std }) => {
+      std.command.exec(updateBlockType, {
+        flavour: 'affine:list',
+        props: { type: 'toggle', collapsed: false, toggleLevel },
+      });
+    },
+  };
+}
 
 function createConversionItem(
   config: TextConversionConfig,

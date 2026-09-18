@@ -9,7 +9,6 @@ import { css } from '@emotion/css';
 import { computed, signal } from '@preact/signals-core';
 import { type TemplateResult } from 'lit';
 import { ref } from 'lit/directives/ref.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import {
@@ -240,14 +239,6 @@ export class KanbanViewUI extends DataViewUIBase<KanbanViewUILogic> {
       return html``;
     }
 
-    const vPadding = this.logic.root.config.virtualPadding$.value;
-    const wrapperStyle = styleMap({
-      marginLeft: `-${vPadding}px`,
-      marginRight: `-${vPadding}px`,
-      paddingLeft: `${vPadding}px`,
-      paddingRight: `${vPadding}px`,
-    });
-
     const groupTrait = this.logic.groupTrait$.value;
 
     return html`
@@ -257,7 +248,6 @@ export class KanbanViewUI extends DataViewUIBase<KanbanViewUILogic> {
       <div
         ${ref(this.logic.scrollContainer$)}
         class="${kanbanGroupsStyle}"
-        style="${wrapperStyle}"
         @wheel="${this.logic.onWheel}"
       >
         ${this.renderGroups()}
@@ -271,12 +261,20 @@ const kanbanViewStyle = css({
   userSelect: 'none',
   display: 'flex',
   flexDirection: 'column',
+  width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
+  overflow: 'hidden',
 });
 
 const kanbanGroupsStyle = css({
   position: 'relative',
   zIndex: 1,
   display: 'flex',
+  width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
+  boxSizing: 'border-box',
   gap: '20px',
   paddingBottom: '4px',
   overflowX: 'scroll',

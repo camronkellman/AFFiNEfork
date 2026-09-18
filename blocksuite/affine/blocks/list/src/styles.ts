@@ -61,6 +61,38 @@ export const listBlockStyles = css`
     flex: 1;
   }
 
+  .affine-list-block-container[data-toggle-level='1']
+    > .affine-list-rich-text-wrapper {
+    font-size: var(--affine-font-h-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: calc(1em + 8px);
+  }
+
+  .affine-list-block-container[data-toggle-level='2']
+    > .affine-list-rich-text-wrapper {
+    font-size: var(--affine-font-h-2);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: calc(1em + 10px);
+  }
+
+  .affine-list-block-container[data-toggle-level='3']
+    > .affine-list-rich-text-wrapper {
+    font-size: var(--affine-font-h-3);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: calc(1em + 8px);
+  }
+
+  .affine-list-block-container[data-toggle-level='4']
+    > .affine-list-rich-text-wrapper {
+    font-size: var(--affine-font-h-4);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: calc(1em + 8px);
+  }
+
   .affine-list--checked {
     color: var(--affine-text-secondary-color);
   }

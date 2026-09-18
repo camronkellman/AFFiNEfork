@@ -68,3 +68,22 @@ export const scrollbar = style({
 export const sidebarScrollArea = style({
   height: '100%',
 });
+
+export const accessDenied = style({
+  display: 'flex',
+  flex: 1,
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  minHeight: 320,
+  padding: 32,
+  color: cssVar('textSecondaryColor'),
+  textAlign: 'center',
+  background: cssVar('backgroundPrimaryColor'),
+});
+
+export const accessDeniedTitle = style({
+  color: cssVar('textPrimaryColor'),
+  fontSize: 16,
+});

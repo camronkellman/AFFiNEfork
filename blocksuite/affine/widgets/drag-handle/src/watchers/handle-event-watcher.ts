@@ -1,8 +1,3 @@
-import {
-  DRAG_HANDLE_CONTAINER_PADDING,
-  DRAG_HANDLE_GRABBER_BORDER_RADIUS,
-  DRAG_HANDLE_GRABBER_WIDTH_HOVERED,
-} from '../config.js';
 import type { AffineDragHandleWidget } from '../drag-handle.js';
 
 export class HandleEventWatcher {
@@ -14,26 +9,7 @@ export class HandleEventWatcher {
   };
 
   private readonly _onDragHandlePointerEnter = () => {
-    const container = this.widget.dragHandleContainer;
-    const grabber = this.widget.dragHandleGrabber;
-    if (!container || !grabber) return;
-
     if (this.widget.isBlockDragHandleVisible && this.widget.anchorBlockId) {
-      const block = this.widget.anchorBlockComponent;
-      if (!block) return;
-
-      const padding = DRAG_HANDLE_CONTAINER_PADDING * this.widget.scale.peek();
-      container.style.paddingTop = `${padding}px`;
-      container.style.paddingBottom = `${padding}px`;
-      container.style.transition = `padding 0.25s ease`;
-
-      grabber.style.width = `${
-        DRAG_HANDLE_GRABBER_WIDTH_HOVERED * this.widget.scaleInNote.peek()
-      }px`;
-      grabber.style.borderRadius = `${
-        DRAG_HANDLE_GRABBER_BORDER_RADIUS * this.widget.scaleInNote.peek()
-      }px`;
-
       this.widget.isDragHandleHovered = true;
     } else if (this.widget.isGfxDragHandleVisible) {
       this.widget.dragHoverRect =

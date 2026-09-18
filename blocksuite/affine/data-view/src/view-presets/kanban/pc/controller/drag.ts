@@ -75,6 +75,7 @@ export class KanbanDragController implements ReactiveController {
           return;
         }
         if (result && currentGroup) {
+          this.logic.clearSelection();
           currentGroup.group.manager.moveCardTo(
             ele.cardId,
             currentGroup.group.key,
@@ -112,7 +113,16 @@ export class KanbanDragController implements ReactiveController {
     | { group: KanbanGroup; card?: KanbanCard; position: InsertToPosition }
     | undefined => {
     const eles = document.elementsFromPoint(evt.x, evt.y);
-    const target = eles.find(v => v instanceof KanbanGroup) as KanbanGroup;
+    const directTarget = eles
+      .map(element =>
+        element instanceof KanbanGroup
+          ? element
+          : element.closest('affine-data-view-kanban-group')
+      )
+      .find(
+        (element): element is KanbanGroup => element instanceof KanbanGroup
+      );
+    const target = directTarget ?? this.getNearestGroup(evt);
     if (target) {
       const card = getCardByPoint(target, evt.y);
       return {
@@ -129,6 +139,29 @@ export class KanbanDragController implements ReactiveController {
       return;
     }
   };
+
+  private getNearestGroup(evt: MouseEvent): KanbanGroup | undefined {
+    const host = this.host;
+    if (!host) return;
+    const hostRect = host.getBoundingClientRect();
+    if (
+      evt.y < hostRect.top ||
+      evt.y > hostRect.bottom ||
+      evt.x < hostRect.left - 24 ||
+      evt.x > hostRect.right + 24
+    ) {
+      return;
+    }
+    return Array.from(
+      host.querySelectorAll<KanbanGroup>('affine-data-view-kanban-group')
+    ).sort((a, b) => {
+      const aRect = a.getBoundingClientRect();
+      const bRect = b.getBoundingClientRect();
+      const aDistance = Math.abs(evt.x - (aRect.left + aRect.right) / 2);
+      const bDistance = Math.abs(evt.x - (bRect.left + bRect.right) / 2);
+      return aDistance - bDistance;
+    })[0];
+  }
 
   showIndicator = (
     evt: MouseEvent,
@@ -160,17 +193,16 @@ export class KanbanDragController implements ReactiveController {
           const event = context.get('pointerState').raw;
           const target = event.target;
           if (target instanceof Element) {
-            const cell = target.closest('affine-data-view-kanban-cell');
-            if (cell?.isEditing$.value) {
-              return;
-            }
-            cell?.selectCurrentCell(false);
             const card = target.closest('affine-data-view-kanban-card');
             if (card) {
+              event.preventDefault();
+              getSelection()?.removeAllRanges();
+              this.logic.clearSelection();
               this.dragStart(card, event);
+              return true;
             }
           }
-          return true;
+          return false;
         })
       );
     }

@@ -58,6 +58,10 @@ const DocMetaSchema = z.object({
   headerImagePositionY: z.number().min(0).max(100).optional(),
   headerImageZoom: z.number().min(1).max(2).optional(),
   description: z.string().optional(),
+  databaseRecord: z.boolean().optional(),
+  databaseRecordParentDocId: z.string().optional(),
+  databaseRecordDatabaseId: z.string().optional(),
+  databaseRecordRowId: z.string().optional(),
 });
 
 export const DocSnapshotSchema: z.ZodType<DocSnapshot> = z.object({

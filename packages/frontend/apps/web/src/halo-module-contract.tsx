@@ -11,6 +11,8 @@ export interface HaloDocsIdentity {
   workspaceId: string;
   expiresAt: string;
   capabilities: HaloDocsCapability[];
+  roles?: string[];
+  availableRoles?: string[];
 }
 
 export interface HaloDocsHostContext {

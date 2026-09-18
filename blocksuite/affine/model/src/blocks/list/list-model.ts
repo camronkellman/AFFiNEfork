@@ -8,8 +8,9 @@ import {
 import type { TextAlign } from '../../consts';
 import type { BlockMeta } from '../../utils/types';
 
-// `toggle` type has been deprecated, do not use it
 export type ListType = 'bulleted' | 'numbered' | 'todo' | 'toggle';
+
+export type ToggleListLevel = 0 | 1 | 2 | 3 | 4;
 
 export type ListProps = {
   type: ListType;
@@ -17,6 +18,7 @@ export type ListProps = {
   textAlign?: TextAlign;
   checked: boolean;
   collapsed: boolean;
+  toggleLevel: ToggleListLevel;
   order: number | null;
   comments?: Record<string, boolean>;
 } & BlockMeta;
@@ -30,6 +32,7 @@ export const ListBlockSchema = defineBlockSchema({
       textAlign: undefined,
       checked: false,
       collapsed: false,
+      toggleLevel: 0,
 
       // number type only for numbered list
       order: null,

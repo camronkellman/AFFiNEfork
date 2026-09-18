@@ -54,17 +54,25 @@ export const styles = css`
   }
 
   .affine-drag-handle-grabber.dots {
-    width: 14px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     box-sizing: border-box;
-    padding: 5px 2px;
-    border-radius: 4px;
-    gap: 2px;
+    padding: 5px 6px;
+    border-radius: 6px;
+    gap: 3px 4px;
     display: flex;
     flex-wrap: wrap;
     background-color: transparent;
-    transform: translateX(-100%);
     transition: unset;
+  }
+
+  .affine-drag-handle-grabber.dots.gfx-dots {
+    width: 14px;
+    height: 26px;
+    padding: 5px 2px;
+    gap: 2px;
+    border-radius: 4px;
+    transform: translateX(-100%);
   }
 
   .affine-drag-handle-grabber.dots:hover {

@@ -3,6 +3,12 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 
 export const databaseBlockStyles = css({
   display: 'block',
+  width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
+  boxSizing: 'border-box',
+  overflowAnchor: 'none',
+  overflow: 'hidden',
   borderRadius: '8px',
   backgroundColor: 'var(--affine-background-primary-color)',
   padding: '8px',
@@ -68,6 +74,11 @@ export const databaseViewBarContainerStyles = css({
 
 export const databaseContentStyles = css({
   position: 'relative',
+  width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
+  overflowAnchor: 'none',
+  overflow: 'hidden',
   backgroundColor: 'var(--affine-background-primary-color)',
   borderRadius: '4px',
 });

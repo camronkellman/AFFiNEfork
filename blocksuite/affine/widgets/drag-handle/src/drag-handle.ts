@@ -252,9 +252,11 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
           }
     );
     const isGfx = this.activeDragHandle === 'gfx';
+    const showDots = this.activeDragHandle !== null;
     const classes = {
       'affine-drag-handle-grabber': true,
-      dots: isGfx ? true : false,
+      dots: showDots,
+      'gfx-dots': isGfx,
     };
 
     return html`
@@ -268,7 +270,7 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
         <div class="affine-drag-handle-container">
           <div class=${classMap(classes)}>
             ${
-              isGfx
+              showDots
                 ? html`
                     <div class="dot"></div>
                     <div class="dot"></div>

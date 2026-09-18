@@ -31,6 +31,7 @@ import {
 } from '@affine/core/modules/workbench';
 import { WorkspaceService } from '@affine/core/modules/workspace';
 import { isNewTabTrigger } from '@affine/core/utils';
+import { canViewHaloDoc } from '@affine/core/utils/halo-docs-access';
 import { ServerFeature } from '@affine/graphql';
 import track from '@affine/track';
 import { DisposableGroup } from '@blocksuite/affine/global/disposable';
@@ -91,6 +92,7 @@ const DetailPageImpl = memo(function DetailPageImpl() {
   const doc = docService.doc;
 
   const mode = useLiveData(editor.mode$);
+  const docMeta = useLiveData(doc.meta$);
 
   const isInTrash = useLiveData(doc.meta$.map(meta => meta.trash));
   const editorContainer = useLiveData(editor.editorContainer$);
@@ -295,6 +297,23 @@ const DetailPageImpl = memo(function DetailPageImpl() {
   const canEdit = useGuard('Doc_Update', doc.id);
 
   const readonly = !canEdit || isInTrash;
+
+  if (!canViewHaloDoc(docMeta)) {
+    return (
+      <FrameworkScope scope={editor.scope}>
+        <ViewBody>
+          <div className={styles.accessDenied} role="status">
+            <strong className={styles.accessDeniedTitle}>
+              You don’t have access to this page.
+            </strong>
+            <span>
+              Ask the page owner or an admin to add one of your roles.
+            </span>
+          </div>
+        </ViewBody>
+      </FrameworkScope>
+    );
+  }
 
   return (
     <FrameworkScope scope={editor.scope}>

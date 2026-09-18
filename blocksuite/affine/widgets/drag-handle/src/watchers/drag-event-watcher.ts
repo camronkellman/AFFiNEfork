@@ -1476,9 +1476,16 @@ export class DragEventWatcher {
       canDrag: () => (this.widget.anchorBlockId.peek() ? true : false),
       onDragStart: () => {
         this.widget.dragging = true;
+        this.widget.suppressHandleClick = true;
       },
       onDrop: () => {
         this._cleanup();
+        // Browsers may emit a click after a completed pointer drag. Keep that
+        // synthetic click from opening the conversion menu, then restore click
+        // behavior for the next deliberate interaction.
+        setTimeout(() => {
+          this.widget.suppressHandleClick = false;
+        });
       },
       setDragPreview: ({ source, container, setOffset }) => {
         if (

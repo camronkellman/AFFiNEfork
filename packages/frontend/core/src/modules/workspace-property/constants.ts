@@ -57,4 +57,10 @@ export const BUILT_IN_CUSTOM_PROPERTY_TYPE: DocCustomPropertyInfo[] = [
     show: 'always-hide',
     index: 'a0000008',
   },
+  {
+    id: 'roleAccess',
+    type: 'roleAccess',
+    show: 'always-hide',
+    index: 'a0000009',
+  },
 ];

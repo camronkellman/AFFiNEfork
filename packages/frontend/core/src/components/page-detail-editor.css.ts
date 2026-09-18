@@ -1,4 +1,23 @@
 import { style } from '@vanilla-extract/css';
+
+export const accessDenied = style({
+  display: 'flex',
+  flex: 1,
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  minHeight: 320,
+  padding: 32,
+  color: 'var(--affine-text-secondary-color)',
+  textAlign: 'center',
+});
+
+export const accessDeniedTitle = style({
+  color: 'var(--affine-text-primary-color)',
+  fontSize: 16,
+});
+
 export const editor = style({
   flex: 1,
   selectors: {

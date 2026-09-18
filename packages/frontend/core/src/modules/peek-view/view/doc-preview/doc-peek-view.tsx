@@ -30,10 +30,15 @@ import * as styles from './doc-peek-view.css';
 
 const logger = new DebugLogger('doc-peek-view');
 
-// Lazy load BlockSuiteEditor to break circular dependency
-const BlockSuiteEditor = lazy(() =>
-  import('@affine/core/blocksuite/block-suite-editor').then(module => ({
-    default: module.BlockSuiteEditor,
+const PageDetailEditor = lazy(() =>
+  import('@affine/core/components/page-detail-editor').then(module => ({
+    default: module.PageDetailEditor,
+  }))
+);
+
+const PeekPageActions = lazy(() =>
+  import('./peek-page-actions').then(module => ({
+    default: module.PeekPageActions,
   }))
 );
 
@@ -80,9 +85,7 @@ function DocPeekPreviewEditor({
   });
   const editor = editorService.editor;
   const doc = editor.doc;
-  const workspace = editor.doc.workspace;
   const mode = useLiveData(editor.mode$);
-  const defaultOpenProperty = useLiveData(editor.defaultOpenProperty$);
   const workbench = useService(WorkbenchService).workbench;
   const peekView = useService(PeekViewService).peekView;
   const editorElement = useLiveData(editor.editorContainer$);
@@ -140,7 +143,7 @@ function DocPeekPreviewEditor({
     disposables.push(AIAppEvents.requestOpenWithChat.subscribe(openHandler));
     disposables.push(AIAppEvents.requestSendWithChat.subscribe(openHandler));
     return () => disposables.forEach(d => d.unsubscribe());
-  }, [doc, peekView, workbench, workspace.id]);
+  }, [doc, peekView, workbench]);
 
   const openOutlinePanel = useCallback(() => {
     workbench.openDoc(doc.id);
@@ -160,14 +163,13 @@ function DocPeekPreviewEditor({
           className={clsx('affine-page-viewport', styles.affineDocViewport)}
         >
           <Suspense fallback={<PageDetailLoading />}>
-            <BlockSuiteEditor
-              className={styles.editor}
-              mode={mode}
-              page={doc.blockSuiteDoc}
-              readonly={readonly}
-              onEditorReady={handleOnEditorReady}
-              defaultOpenProperty={defaultOpenProperty}
-            />
+            <PeekPageActions page={doc.blockSuiteDoc} />
+            <div className={styles.editor}>
+              <PageDetailEditor
+                readonly={readonly}
+                onLoad={handleOnEditorReady}
+              />
+            </div>
           </Suspense>
         </Scrollable.Viewport>
         <Scrollable.Scrollbar />

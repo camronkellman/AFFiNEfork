@@ -24,7 +24,6 @@ import {
   getClosestBlockByPoint,
   getClosestNoteBlock,
   getDragHandleContainerHeight,
-  includeTextSelection,
   insideDatabaseTable,
   isBlockIdEqual,
   isOutOfNoteBlock,
@@ -70,30 +69,13 @@ export class PointerEventWatcher {
 
     if (!anchorBlockId) return;
 
-    const { selection } = this.widget.std;
-    const selectedBlocks = this.widget.selectionHelper.selectedBlocks;
+    if (this.widget.suppressHandleClick) return;
 
-    // Should clear selection if current block is the first selected block
-    if (
-      selectedBlocks.length > 0 &&
-      !includeTextSelection(selectedBlocks) &&
-      selectedBlocks[0].blockId === anchorBlockId
-    ) {
-      selection.clear(['block']);
-      this.widget.dragHoverRect = null;
-      this.showDragHandleOnHoverBlock();
-      return;
-    }
-
-    // Should select the block if current block is not selected
-    const block = this.widget.anchorBlockComponent.peek();
-    if (!block) return;
-
-    if (selectedBlocks.length > 1) {
-      this.showDragHandleOnHoverBlock();
-    }
-
-    this.widget.selectionHelper.setSelectedBlocks([block]);
+    // Clicking the handle is an action in its own right. Dragging still starts
+    // from the same generous hit target, while a click opens the conversion
+    // menu instead of making the user chase a separate control.
+    this.widget.openConversionMenu();
+    return;
   };
 
   // Need to consider block padding and scale

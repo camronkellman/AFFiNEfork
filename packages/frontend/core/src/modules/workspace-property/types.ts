@@ -41,6 +41,7 @@ export type WorkspacePropertyTypes = {
   journal: { filter: 'is' | 'is-not' };
   edgelessTheme: { filter: 'is' | 'is-not' };
   pageWidth: { filter: 'is' | 'is-not' };
+  roleAccess: { filter: never };
   template: { filter: 'is' | 'is-not' };
   unknown: { filter: never };
 };
