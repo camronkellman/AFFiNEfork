@@ -5,7 +5,7 @@ import { playCheckAnimation } from '@blocksuite/affine-components/icons';
 import { TOGGLE_BUTTON_PARENT_CLASS } from '@blocksuite/affine-components/toggle-button';
 import { DefaultInlineManagerExtension } from '@blocksuite/affine-inline-preset';
 import type { ListBlockModel } from '@blocksuite/affine-model';
-import type { RichText } from '@blocksuite/affine-rich-text';
+import { focusTextModel, type RichText } from '@blocksuite/affine-rich-text';
 import {
   BLOCK_CHILDREN_CONTAINER_PADDING_LEFT,
   EDGELESS_TOP_CONTENTEDITABLE_SELECTOR,
@@ -65,6 +65,21 @@ export class ListBlockComponent extends CaptionedBlockComponent<ListBlockModel> 
       return;
     }
     this._select();
+  };
+
+  private readonly _createToggleChild = () => {
+    if (this.store.readonly || this.model.props.type !== 'toggle') return;
+
+    this.store.captureSync();
+    if (this.model.props.collapsed) {
+      this.store.updateBlock(this.model, { collapsed: false });
+    }
+    const childId = this.store.addBlock('affine:paragraph', {}, this.model);
+    if (!childId) return;
+
+    this.host.updateComplete
+      .then(() => focusTextModel(this.std, childId))
+      .catch(console.error);
   };
 
   get attributeRenderer() {
@@ -157,15 +172,33 @@ export class ListBlockComponent extends CaptionedBlockComponent<ListBlockModel> 
     const childrenId = `list-children-${this.model.id}`;
     const toggleLevel =
       model.props.type === 'toggle' ? model.props.toggleLevel : undefined;
+    const isToggle = model.props.type === 'toggle';
+    const isEmptyToggle = isToggle && model.children.length === 0;
     const children = html`<div
       id=${childrenId}
-      class="affine-block-children-container"
+      class=${classMap({
+        'affine-block-children-container': true,
+        'affine-toggle-children': isToggle,
+        'affine-toggle-children--empty': isEmptyToggle,
+      })}
       style=${styleMap({
         paddingLeft: `${BLOCK_CHILDREN_CONTAINER_PADDING_LEFT}px`,
         display: collapsed ? 'none' : undefined,
       })}
     >
       ${this.renderChildren(this.model)}
+      ${
+        isEmptyToggle && !this.store.readonly
+          ? html`<button
+              type="button"
+              class="affine-toggle-empty-action"
+              @click=${this._createToggleChild}
+            >
+              <span class="affine-toggle-empty-plus">+</span>
+              <span>Type or add blocks inside this toggle</span>
+            </button>`
+          : nothing
+      }
     </div>`;
 
     return html`
@@ -179,11 +212,11 @@ export class ListBlockComponent extends CaptionedBlockComponent<ListBlockModel> 
             'affine-list-rich-text-wrapper': true,
             'affine-list--checked':
               this.model.props.type === 'todo' && this.model.props.checked,
-            [TOGGLE_BUTTON_PARENT_CLASS]: true,
+            [TOGGLE_BUTTON_PARENT_CLASS]: !isToggle,
           })}
         >
           ${
-            this.model.children.length > 0
+            !isToggle && this.model.children.length > 0
               ? html`
                   <blocksuite-toggle-button
                     .collapsed=${collapsed}

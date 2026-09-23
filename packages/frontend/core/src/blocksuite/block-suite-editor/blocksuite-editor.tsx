@@ -28,7 +28,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { useLiveData, useService } from '@toeverything/infra';
 import { cssVar } from '@toeverything/theme';
 import clsx from 'clsx';
-import type { CSSProperties, HTMLAttributes } from 'react';
+import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DefaultOpenProperty } from '../../components/properties';
@@ -53,6 +53,7 @@ export interface EditorProps extends HTMLAttributes<HTMLDivElement> {
   shared?: boolean;
   readonly?: boolean;
   defaultOpenProperty?: DefaultOpenProperty;
+  headerAction?: ReactNode;
   // on Editor ready
   onEditorReady?: (editor: AffineEditorContainer) => (() => void) | void;
 }
@@ -66,6 +67,7 @@ const BlockSuiteEditorImpl = ({
   style,
   onEditorReady,
   defaultOpenProperty,
+  headerAction,
   ...props
 }: EditorProps) => {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -265,6 +267,7 @@ const BlockSuiteEditorImpl = ({
           titleRef={docTitleRef}
           onClickBlank={handleClickPageModeBlank}
           defaultOpenProperty={defaultOpenProperty}
+          headerAction={headerAction}
         />
       ) : (
         <BlocksuiteEdgelessEditor

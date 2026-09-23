@@ -35,6 +35,24 @@ export const splitListCommand: Command<{
 
   doc.captureSync();
 
+  if (
+    model.props.type === 'toggle' &&
+    !model.props.collapsed &&
+    model.children.length === 0 &&
+    model.props.text.length > 0 &&
+    inlineIndex === model.props.text.length
+  ) {
+    const childId = doc.addBlock('affine:paragraph', {}, model);
+    if (!childId) return;
+
+    host.updateComplete
+      .then(() => focusTextModel(std, childId))
+      .catch(console.error);
+
+    next();
+    return;
+  }
+
   if (model.props.text.length === 0) {
     /**
      * case 1: target is top most, convert the list into a paragraph

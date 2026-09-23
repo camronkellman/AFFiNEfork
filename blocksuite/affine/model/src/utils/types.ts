@@ -43,4 +43,11 @@ export type BlockMeta = {
   'meta:updatedBy'?: string;
   'meta:cover'?: string;
   'meta:coverPosition'?: number;
+  'meta:galleryCoverPositionX'?: number;
+  'meta:galleryCoverPositionY'?: number;
+  'meta:galleryCoverZoom'?: number;
+  'meta:description'?: string;
+  'meta:pageIcon'?:
+    | { type: 'emoji'; unicode: string }
+    | { type: 'affine-icon'; name: string; color: string };
 };

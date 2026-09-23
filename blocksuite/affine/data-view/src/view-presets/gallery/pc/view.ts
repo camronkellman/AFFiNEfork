@@ -6,6 +6,7 @@ import {
 } from '@blocksuite/affine-components/context-menu';
 import type { InsertToPosition } from '@blocksuite/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@blocksuite/global/lit';
+import * as pageIcons from '@blocksuite/icons/lit';
 import {
   CopyIcon,
   DeleteIcon,
@@ -14,7 +15,7 @@ import {
   PlusIcon,
 } from '@blocksuite/icons/lit';
 import { ShadowlessElement } from '@blocksuite/std';
-import { css, html, nothing } from 'lit';
+import { css, html, nothing, type TemplateResult } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -357,6 +358,7 @@ export class GalleryCard extends SignalWatcher(
   @property({ attribute: false }) accessor rowId!: string;
   @query('.gallery-cover-input') accessor coverInput!: HTMLInputElement;
   @state() private accessor coverUrl: string | undefined;
+  @state() private accessor recordCoverUrl: string | undefined;
   @state() private accessor repositioning = false;
   @state() private accessor draftPositionX = 50;
   @state() private accessor draftPositionY = 50;
@@ -386,6 +388,7 @@ export class GalleryCard extends SignalWatcher(
       }
     | undefined;
   private coverRequest = 0;
+  private recordCoverRequest = 0;
 
   private get view() {
     return this.logic.view;
@@ -403,7 +406,7 @@ export class GalleryCard extends SignalWatcher(
     this.logic.root.openDetailPanel({ view: this.view, rowId: this.rowId });
   };
 
-  private readonly onCoverSelected = (event: Event) => {
+  private readonly onCoverSelected = async (event: Event) => {
     event.stopPropagation();
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
@@ -412,20 +415,32 @@ export class GalleryCard extends SignalWatcher(
       this.restoreScrollPosition();
       return;
     }
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
-      if (typeof reader.result !== 'string') return;
+    try {
+      const provider = this.view.serviceGet(GalleryCoverProvider);
+      const source = provider?.upload
+        ? await provider.upload(file)
+        : await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+              if (typeof reader.result === 'string') resolve(reader.result);
+              else reject(new Error('Cover image could not be read'));
+            });
+            reader.addEventListener('error', () => reject(reader.error));
+            reader.readAsDataURL(file);
+          });
       this.view
         .serviceGet(GalleryCoverProvider)
-        ?.setRecordCover?.(this.rowId, reader.result);
+        ?.setRecordCover?.(this.rowId, source);
       this.draftPositionX = 50;
       this.draftPositionY = 50;
       this.draftZoom = 1;
       this.coverInteractionLocked = true;
       this.suppressOpenUntil = Number.POSITIVE_INFINITY;
       this.repositioning = true;
-    });
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to save gallery cover', error);
+      this.restoreScrollPosition();
+    }
   };
 
   private captureScrollPosition() {
@@ -662,6 +677,21 @@ export class GalleryCard extends SignalWatcher(
     if (request === this.coverRequest) this.coverUrl = resolved;
   }
 
+  private async loadRecordCover(value?: string) {
+    const request = ++this.recordCoverRequest;
+    if (!value) {
+      this.recordCoverUrl = undefined;
+      return;
+    }
+    this.recordCoverUrl = undefined;
+    const resolved = await this.view
+      .serviceGet(GalleryCoverProvider)
+      ?.resolve(value);
+    if (request === this.recordCoverRequest) {
+      this.recordCoverUrl = resolved;
+    }
+  }
+
   override connectedCallback() {
     super.connectedCallback();
     this.disposables.add(
@@ -675,6 +705,17 @@ export class GalleryCard extends SignalWatcher(
           .value$.subscribe(() => void this.loadCover())
       );
     }
+    const recordCover = this.view
+      .serviceGet(GalleryCoverProvider)
+      ?.recordCover?.(this.rowId);
+    if (recordCover) {
+      this.disposables.add(
+        recordCover.source$.subscribe(value => {
+          void this.loadRecordCover(value).catch(console.error);
+        })
+      );
+      void this.loadRecordCover(recordCover.source$.value).catch(console.error);
+    }
     this.loadCover().catch(console.error);
   }
 
@@ -682,7 +723,7 @@ export class GalleryCard extends SignalWatcher(
     const recordCover = this.view
       .serviceGet(GalleryCoverProvider)
       ?.recordCover?.(this.rowId);
-    const recordCoverUrl = recordCover?.source$.value;
+    const recordCoverSource = recordCover?.source$.value;
     const coverPositionX = this.repositioning
       ? this.draftPositionX
       : (recordCover?.positionX$.value ?? 50);
@@ -692,7 +733,7 @@ export class GalleryCard extends SignalWatcher(
     const coverZoom = this.repositioning
       ? this.draftZoom
       : (recordCover?.zoom$.value ?? 1);
-    const coverUrl = recordCoverUrl ?? this.coverUrl;
+    const coverUrl = this.recordCoverUrl ?? this.coverUrl;
     const titleCell = this.view.titleProperty?.cellGetOrCreate(this.rowId);
     const titleJson = titleCell?.jsonValue$.value;
     const title =
@@ -701,6 +742,22 @@ export class GalleryCard extends SignalWatcher(
         : titleCell?.stringValue$.value) || 'Untitled';
     const icon = this.view.iconProperty?.cellGetOrCreate(this.rowId).value$
       .value;
+    const pageIcon = this.view
+      .serviceGet(GalleryCoverProvider)
+      ?.recordIcon?.(this.rowId).value;
+    const pageIconRenderer =
+      pageIcon?.type === 'affine-icon'
+        ? (pageIcons as Record<
+            string,
+            (options?: { style?: string }) => TemplateResult
+          >)[`${pageIcon.name}Icon`]
+        : undefined;
+    const displayedIcon =
+      pageIcon?.type === 'emoji'
+        ? pageIcon.unicode
+        : pageIconRenderer && pageIcon?.type === 'affine-icon'
+          ? pageIconRenderer({ style: `color:${pageIcon.color}` })
+          : icon;
     const properties = this.view.cardProperties$.value.flatMap(property => {
       const value = property.cellGetOrCreate(this.rowId).stringValue$.value;
       return value ? [{ property, value }] : [];
@@ -719,7 +776,7 @@ export class GalleryCard extends SignalWatcher(
       />
       <div @click=${this.open}>
         ${
-          recordCoverUrl || this.view.coverColumnId$.value
+          recordCoverSource || this.view.coverColumnId$.value
             ? html`<div
                 class="gallery-cover"
                 data-repositioning=${this.repositioning || nothing}
@@ -792,7 +849,11 @@ export class GalleryCard extends SignalWatcher(
         }
         <div class="gallery-content">
           <div class="gallery-title">
-            ${icon ? html`<span class="gallery-icon">${icon}</span>` : nothing}
+            ${
+              displayedIcon
+                ? html`<span class="gallery-icon">${displayedIcon}</span>`
+                : nothing
+            }
             <span>${title}</span>
           </div>
           ${

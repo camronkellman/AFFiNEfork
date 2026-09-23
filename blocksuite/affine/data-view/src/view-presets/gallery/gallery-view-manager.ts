@@ -8,6 +8,7 @@ import type { GalleryCardSize, GalleryViewData } from './define.js';
 
 export interface GalleryCoverResolver {
   resolve(value: unknown): Promise<string | undefined>;
+  upload?(file: Blob): Promise<string>;
   recordCover?(rowId: string):
     | {
         source$: ReadonlySignal<string | undefined>;
@@ -18,6 +19,11 @@ export interface GalleryCoverResolver {
       }
     | undefined;
   recordDescription?(rowId: string): ReadonlySignal<string | undefined>;
+  recordIcon?(rowId: string): ReadonlySignal<
+    | { type: 'emoji'; unicode: string }
+    | { type: 'affine-icon'; name: string; color: string }
+    | undefined
+  >;
   setRecordCover?(rowId: string, source?: string): void;
   setRecordCoverTransform?(
     rowId: string,

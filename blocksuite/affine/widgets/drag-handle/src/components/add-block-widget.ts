@@ -15,13 +15,20 @@ export class AffineAddBlockWidget extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 18px;
-      height: 18px;
-      margin-top: 8px;
+      width: 24px;
+      height: 24px;
+      margin-top: 2px;
       cursor: pointer;
       border-radius: 4px;
-      color: var(--affine-placeholder-color);
-      background: transparent;
+      color: var(
+        --affine-text-secondary-color,
+        var(--affine-placeholder-color)
+      );
+      background: color-mix(
+        in srgb,
+        var(--affine-hover-color) 55%,
+        transparent
+      );
       border: none;
       padding: 0;
       transition:
@@ -38,8 +45,8 @@ export class AffineAddBlockWidget extends LitElement {
     }
 
     .affine-add-block-widget svg {
-      width: 12px;
-      height: 12px;
+      width: 14px;
+      height: 14px;
       flex-shrink: 0;
     }
   `;
@@ -65,7 +72,7 @@ export class AffineAddBlockWidget extends LitElement {
         aria-label="Add block below"
         @click=${this._handleClick}
       >
-        ${PlusIcon({ width: '12', height: '12' })}
+        ${PlusIcon({ width: '14', height: '14' })}
       </button>
     `;
   }

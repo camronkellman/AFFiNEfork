@@ -59,6 +59,7 @@ interface BlocksuiteEditorProps {
   readonly?: boolean;
   shared?: boolean;
   defaultOpenProperty?: DefaultOpenProperty;
+  headerAction?: React.ReactNode;
 }
 
 const DocDescription = ({
@@ -214,6 +215,7 @@ export const BlocksuiteDocEditor = forwardRef<
     titleRef: externalTitleRef,
     defaultOpenProperty,
     readonly,
+    headerAction,
   },
   ref
 ) {
@@ -300,7 +302,11 @@ export const BlocksuiteDocEditor = forwardRef<
     <>
       <div className={styles.affineDocViewport}>
         {!BUILD_CONFIG.isMobileEdition ? (
-          <DocIconPicker docId={page.id} readonly={readonly || shared} />
+          <DocIconPicker
+            docId={page.id}
+            readonly={readonly || shared}
+            headerAction={headerAction}
+          />
         ) : null}
         {!isJournal ? (
           <LitDocTitle doc={page} ref={onTitleRef} />

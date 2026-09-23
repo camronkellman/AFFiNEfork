@@ -74,7 +74,7 @@ export class PointerEventWatcher {
     // Clicking the handle is an action in its own right. Dragging still starts
     // from the same generous hit target, while a click opens the conversion
     // menu instead of making the user chase a separate control.
-    this.widget.openConversionMenu();
+    this.widget.openActionsMenu();
     return;
   };
 
@@ -318,11 +318,13 @@ export class PointerEventWatcher {
     updateDragHandleClassName([block]);
     // End of ad-hoc solution
 
-    const applyStyle = (transition?: boolean) => {
+    const applyStyle = () => {
       const containerStyle = this._containerStyle.value;
       if (!containerStyle) return;
 
-      container.style.transition = transition ? 'padding 0.25s ease' : 'none';
+      // The controls should track the active line immediately. Animating the
+      // padding makes the handle visibly trail the pointer between rows.
+      container.style.transition = 'none';
       Object.assign(container.style, containerStyle);
 
       container.style.display = 'flex';
@@ -343,20 +345,7 @@ export class PointerEventWatcher {
       }
     };
 
-    if (isBlockIdEqual(block.blockId, this._lastShowedBlock?.id)) {
-      applyStyle(true);
-    } else if (this.widget.selectionHelper.selectedBlocks.length) {
-      if (this.widget.selectionHelper.isBlockSelected(block))
-        applyStyle(
-          this.widget.isDragHandleHovered &&
-            this.widget.selectionHelper.isBlockSelected(
-              this._lastShowedBlock?.el
-            )
-        );
-      else applyStyle(false);
-    } else {
-      applyStyle(false);
-    }
+    applyStyle();
 
     const grabberStyle = this._grabberStyle.value;
     Object.assign(grabber.style, grabberStyle);

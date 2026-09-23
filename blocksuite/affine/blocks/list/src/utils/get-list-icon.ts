@@ -65,13 +65,16 @@ export function getListIcon(
         }
       </div>`;
     case 'toggle':
-      return html`<div
+      return html`<button
+        type="button"
         contenteditable="false"
-        class="affine-list-block__prefix"
+        class="affine-list-block__prefix affine-list-block__toggle-prefix"
+        aria-label=${showChildren ? 'Collapse toggle' : 'Expand toggle'}
+        aria-expanded=${showChildren}
         @click=${onClick}
       >
         ${showChildren ? ToggleDownIcon() : ToggleRightIcon()}
-      </div>`;
+      </button>`;
     default:
       console.error('Unknown list type', model.props.type, model);
       return null;

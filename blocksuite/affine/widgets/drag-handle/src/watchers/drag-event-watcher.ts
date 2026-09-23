@@ -46,6 +46,8 @@ import {
 import { assertType } from '@blocksuite/global/utils';
 import {
   BlockComponent,
+  BlockSelection,
+  TextSelection,
   type BlockStdScope,
   type DragFromBlockSuite,
   type DragPayload,
@@ -1468,12 +1470,25 @@ export class DragEventWatcher {
     return isUnderNote;
   }
 
-  private _makeDraggable(target: HTMLElement) {
+  private _makeDraggable(target: HTMLElement, selectedContent = false) {
     const std = this.std;
 
     return std.dnd.draggable<DragBlockEntity>({
       element: target,
-      canDrag: () => (this.widget.anchorBlockId.peek() ? true : false),
+      canDrag: () => {
+        if (!selectedContent) return !!this.widget.anchorBlockId.peek();
+        if (this.mode !== 'page' || this.widget.store.readonly) return false;
+        const block = target as BlockComponent;
+        if (this.std.selection.filter(BlockSelection).some(selection =>
+          selection.blockId === block.blockId
+        )) return true;
+        if (!this.std.selection.find(TextSelection)) return false;
+        const nativeSelection = window.getSelection();
+        if (!nativeSelection || nativeSelection.isCollapsed || !nativeSelection.rangeCount) {
+          return false;
+        }
+        return nativeSelection.getRangeAt(0).intersectsNode(block);
+      },
       onDragStart: () => {
         this.widget.dragging = true;
         this.widget.suppressHandleClick = true;
@@ -1487,7 +1502,7 @@ export class DragEventWatcher {
           this.widget.suppressHandleClick = false;
         });
       },
-      setDragPreview: ({ source, container, setOffset }) => {
+      setDragPreview: ({ source, container, setOffset, location }) => {
         if (
           !source.data?.bsEntity?.modelIds.length ||
           !source.data.bsEntity.snapshot
@@ -1504,9 +1519,35 @@ export class DragEventWatcher {
           mode: fromMode ?? 'block',
         });
 
-        setOffset(offset);
+        if (fromMode === 'block') {
+          const note = this.widget.host.querySelector('affine-note');
+          const selectedViews = source.data.bsEntity.modelIds
+            .map(id => this.std.view.getBlock(id))
+            .filter((view): view is BlockComponent => !!view);
+          if (note && selectedViews.length) {
+            const top = Math.min(...selectedViews.map(view =>
+              view.getBoundingClientRect().top
+            ));
+            const input = location.current.input;
+            // The preview is note-width, not source-cell or handle-width.
+            // Keep the grabbed point aligned to its original note position,
+            // including when the pointer starts left of the note on six dots.
+            setOffset({
+              x: input.clientX - note.getBoundingClientRect().left,
+              y: input.clientY - top,
+            });
+          } else {
+            setOffset(selectedContent ? 'preserve' : offset);
+          }
+        } else {
+          setOffset(offset);
+        }
       },
       setDragData: () => {
+        if (selectedContent) {
+          this.widget.anchorBlockId.value = (target as BlockComponent).blockId;
+          this.widget.activeDragHandle = 'block';
+        }
         const { fromMode, snapshot } = this._getDraggedSnapshot();
 
         snapshot && this._setOpacityOfDraggedBlocks(snapshot);
@@ -1560,10 +1601,14 @@ export class DragEventWatcher {
            * 1. can't drop on the same block or its children
            */
           if (source.data.bsEntity?.type === 'blocks') {
-            return (
-              source.data.from?.docId !== widget.store.id ||
-              source.data.bsEntity.modelIds.every(id => id !== view.model.id)
-            );
+            if (source.data.from?.docId !== widget.store.id) return true;
+            const draggedIds = new Set(source.data.bsEntity.modelIds);
+            let candidate: typeof view.model | null = view.model;
+            while (candidate) {
+              if (draggedIds.has(candidate.id)) return false;
+              candidate = widget.store.getParent(candidate);
+            }
+            return true;
           }
 
           return false;
@@ -1593,6 +1638,11 @@ export class DragEventWatcher {
 
     if (matchModels(view.model, [AttachmentBlockModel, BookmarkBlockModel])) {
       cleanups.push(this._makeDraggable(view));
+    } else if (
+      this.mode === 'page' &&
+      !['affine:note', 'affine:column'].includes(view.model.flavour)
+    ) {
+      cleanups.push(this._makeDraggable(view, true));
     }
 
     if (this.dropTargetCleanUps.has(view.model.id)) {

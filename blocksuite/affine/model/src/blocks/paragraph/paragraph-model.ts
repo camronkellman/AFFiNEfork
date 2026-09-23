@@ -44,6 +44,7 @@ export const ParagraphBlockSchema = defineBlockSchema({
     'meta:galleryCoverPositionY': undefined,
     'meta:galleryCoverZoom': undefined,
     'meta:description': undefined,
+    'meta:pageIcon': undefined,
   }),
   metadata: {
     version: 1,
@@ -55,6 +56,7 @@ export const ParagraphBlockSchema = defineBlockSchema({
       'affine:list',
       'affine:edgeless-text',
       'affine:callout',
+      'affine:column',
       'affine:transcription',
     ],
   },

@@ -10,6 +10,9 @@ export type DocsPropertiesMeta = {
     options: Tag[];
   };
 };
+export type DocPageIcon =
+  | { type: 'emoji'; unicode: string }
+  | { type: 'affine-icon'; name: string; color: string };
 export interface DocMeta {
   id: string;
   title: string;
@@ -18,7 +21,7 @@ export interface DocMeta {
   updatedDate?: number;
   favorite?: boolean;
   trash?: boolean;
-  /** Optional page cover stored as a URL or data URL. */
+  /** Optional page cover stored as a blob ID or a legacy URL/data URL. */
   headerImage?: string;
   /** Vertical focal point for the page cover, from 0 to 100. */
   headerImagePosition?: number;
@@ -30,6 +33,8 @@ export interface DocMeta {
   headerImageZoom?: number;
   /** Short, intentional summary shown beneath the title and on doc cards. */
   description?: string;
+  /** Page icon mirrored onto database cards for linked record pages. */
+  pageIcon?: DocPageIcon;
   /** True when this document belongs to a database row instead of All Docs. */
   databaseRecord?: boolean;
   /** The document containing the owning database block. */

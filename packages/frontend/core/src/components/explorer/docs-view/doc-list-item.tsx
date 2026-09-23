@@ -34,6 +34,7 @@ import {
 } from 'react';
 
 import { PagePreview } from '../../page-list/page-content-preview';
+import { useCoverImageUrl } from '../../hooks/affine/use-cover-image-url';
 import { DocExplorerContext } from '../context';
 import { quickActions } from '../quick-actions.constants';
 import * as styles from './doc-list-item.css';
@@ -416,6 +417,10 @@ export const CardViewDoc = ({ docId }: DocListItemProps) => {
   const [coverPositionX, setCoverPositionX] = useState(50);
   const [coverPositionY, setCoverPositionY] = useState(50);
   const [coverZoom, setCoverZoom] = useState(1.2);
+  const coverUrl = useCoverImageUrl(
+    docMeta.headerImage,
+    doc?.blockSuiteDoc?.blobSync
+  );
 
   useEffect(() => {
     const x = docMeta.headerImagePositionX ?? 50;
@@ -537,7 +542,7 @@ export const CardViewDoc = ({ docId }: DocListItemProps) => {
     >
       <li className={styles.cardViewRoot}>
         <DragHandle id={docId} className={styles.cardDragHandle} />
-        {docMeta.headerImage ? (
+        {docMeta.headerImage && coverUrl ? (
           <div
             className={styles.cardViewCoverViewport}
             data-adjusting={adjustingCover || undefined}
@@ -549,7 +554,7 @@ export const CardViewDoc = ({ docId }: DocListItemProps) => {
           >
             <img
               className={styles.cardViewCover}
-              src={docMeta.headerImage}
+              src={coverUrl}
               alt=""
               draggable={false}
               style={{

@@ -56,8 +56,18 @@ const DocMetaSchema = z.object({
   headerImagePosition: z.number().min(0).max(100).optional(),
   headerImagePositionX: z.number().min(0).max(100).optional(),
   headerImagePositionY: z.number().min(0).max(100).optional(),
-  headerImageZoom: z.number().min(1).max(2).optional(),
+  headerImageZoom: z.number().min(0.5).max(2).optional(),
   description: z.string().optional(),
+  pageIcon: z
+    .union([
+      z.object({ type: z.literal('emoji'), unicode: z.string() }),
+      z.object({
+        type: z.literal('affine-icon'),
+        name: z.string(),
+        color: z.string(),
+      }),
+    ])
+    .optional(),
   databaseRecord: z.boolean().optional(),
   databaseRecordParentDocId: z.string().optional(),
   databaseRecordDatabaseId: z.string().optional(),

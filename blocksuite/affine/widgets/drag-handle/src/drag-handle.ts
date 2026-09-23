@@ -1,8 +1,19 @@
 import './components/add-block-widget.js';
 
+import { updateBlockType } from '@blocksuite/affine-block-note';
 import { EdgelessCRUDIdentifier } from '@blocksuite/affine-block-surface';
 import type { RootBlockModel } from '@blocksuite/affine-model';
-import { focusTextModel } from '@blocksuite/affine-rich-text';
+import {
+  focusTextModel,
+  textConversionConfigs,
+} from '@blocksuite/affine-rich-text';
+import {
+  copySelectedModelsCommand,
+  deleteSelectedModelsCommand,
+  draftSelectedModelsCommand,
+  duplicateSelectedModelsCommand,
+  getSelectedModelsCommand,
+} from '@blocksuite/affine-shared/commands';
 import { DocModeProvider } from '@blocksuite/affine-shared/services';
 import {
   isInsideEdgelessEditor,
@@ -10,6 +21,12 @@ import {
 } from '@blocksuite/affine-shared/utils';
 import { DisposableGroup } from '@blocksuite/global/disposable';
 import type { IVec, Point, Rect } from '@blocksuite/global/gfx';
+import {
+  CopyIcon,
+  DeleteIcon,
+  DuplicateIcon,
+  PaletteIcon,
+} from '@blocksuite/icons/lit';
 import { type BlockComponent, WidgetComponent } from '@blocksuite/std';
 import type { GfxModel } from '@blocksuite/std/gfx';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
@@ -91,11 +108,139 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
     this.hide();
   };
 
+  private readonly _closeActionsMenu = () => {
+    this.actionsMenuOpen = false;
+    this.actionsMenuPanel = 'main';
+    this.actionsSearch = '';
+    this.actionsAnchorBlockId = null;
+  };
+
+  private readonly _getActionsBlock = () =>
+    this.actionsAnchorBlockId
+      ? this.std.view.getBlock(this.actionsAnchorBlockId)
+      : null;
+
+  private readonly _selectActionsBlock = () => {
+    const block = this._getActionsBlock();
+    if (!block) return null;
+    this.selectionHelper.setSelectedBlocks([block]);
+    return block;
+  };
+
+  private readonly _convertActionsBlock = (
+    flavour: string,
+    type?: string,
+    toggleLevel?: 0 | 1 | 2 | 3 | 4
+  ) => {
+    if (!this._selectActionsBlock()) return;
+    this.std.command.exec(updateBlockType, {
+      flavour,
+      ...(type && {
+        props: {
+          type,
+          ...(type === 'toggle'
+            ? { collapsed: false, toggleLevel: toggleLevel ?? 0 }
+            : {}),
+        },
+      }),
+    });
+    this._closeActionsMenu();
+  };
+
+  private readonly _formatActionsBlock = (color?: string) => {
+    const block = this._selectActionsBlock();
+    const text = block?.model.text;
+    if (!text || text.length === 0) return;
+    text.format(0, text.length, { color });
+    this._closeActionsMenu();
+  };
+
+  private readonly _copyActionsBlock = () => {
+    if (!this._selectActionsBlock()) return;
+    this.std.command
+      .chain()
+      .pipe(getSelectedModelsCommand)
+      .pipe(draftSelectedModelsCommand)
+      .pipe(copySelectedModelsCommand)
+      .run();
+    this._closeActionsMenu();
+  };
+
+  private readonly _duplicateActionsBlock = () => {
+    if (!this._selectActionsBlock()) return;
+    this.std.command
+      .chain()
+      .pipe(getSelectedModelsCommand)
+      .pipe(duplicateSelectedModelsCommand)
+      .run();
+    this._closeActionsMenu();
+  };
+
+  private readonly _deleteActionsBlock = () => {
+    if (!this._selectActionsBlock()) return;
+    this.std.command
+      .chain()
+      .pipe(getSelectedModelsCommand)
+      .pipe(deleteSelectedModelsCommand)
+      .run();
+    this._closeActionsMenu();
+  };
+
+  openActionsMenu = () => {
+    const block = this.anchorBlockComponent.peek();
+    if (!block || this.store.readonly || this.mode !== 'page') return;
+
+    const rect = this.dragHandleGrabber.getBoundingClientRect();
+    const menuHeight = Math.min(460, window.innerHeight - 24);
+    const below = window.innerHeight - rect.bottom - 12;
+    const above = rect.top - 12;
+    this.actionsMenuPosition = {
+      left: Math.max(12, Math.min(rect.left, window.innerWidth - 264)),
+      top:
+        below >= menuHeight || below >= above
+          ? rect.bottom + 6
+          : Math.max(12, rect.top - menuHeight - 6),
+    };
+    this.actionsMenuMaxHeight = Math.min(
+      menuHeight,
+      below >= menuHeight || below >= above
+        ? window.innerHeight - this.actionsMenuPosition.top - 12
+        : above - 6
+    );
+    this.actionsAnchorBlockId = block.blockId;
+    this.actionsMenuPanel = 'main';
+    this.actionsSearch = '';
+    this.actionsMenuOpen = true;
+    // Opening the six-dot menu is not itself a block-selection action. Keeping
+    // the previous text/block selection alive also keeps AFFiNE's formatting
+    // toolbar open underneath this menu, leaving two overlapping toolbars.
+    // The chosen menu action selects the block immediately before it runs.
+    this.std.selection.set([]);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  private actionsAnchorBlockId: string | null = null;
+
   @state()
   accessor activeDragHandle: 'block' | 'gfx' | null = null;
 
   @state()
   accessor showAddBlockWidget = false;
+
+  @state()
+  accessor actionsMenuOpen = false;
+
+  @state()
+  accessor actionsMenuPanel: 'main' | 'turn-into' | 'color' = 'main';
+
+  @state()
+  accessor actionsSearch = '';
+
+  @state()
+  accessor actionsMenuPosition = { left: 0, top: 0 };
+
+  @state()
+  accessor actionsMenuMaxHeight = 460;
 
   anchorBlockId = signal<string | null>(null);
 
@@ -118,6 +263,8 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
   center: IVec = [0, 0];
 
   dragging = false;
+
+  suppressHandleClick = false;
 
   rectHelper = new RectHelper(this);
 
@@ -150,6 +297,7 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
    * @param force Reset the dragging state
    */
   hide = (force = false) => {
+    if (this.actionsMenuOpen && !force) return;
     if (this.dragging && !force) return;
     updateDragHandleClassName();
 
@@ -230,6 +378,19 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
       this.hide();
     });
     this._handleEventWatcher.watch();
+    this._disposables.addFromEvent(document, 'pointerdown', event => {
+      if (!this.actionsMenuOpen) return;
+      const path = event.composedPath();
+      if (path.includes(this.dragHandleGrabber)) return;
+      if (
+        path.some(
+          target =>
+            target instanceof Element && target.closest?.('.block-actions-menu')
+        )
+      )
+        return;
+      this._closeActionsMenu();
+    });
 
     if (isInsidePageEditor(this.host)) {
       this._pageWatcher.watch();
@@ -258,9 +419,35 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
       dots: showDots,
       'gfx-dots': isGfx,
     };
+    const widgetClasses = {
+      'affine-drag-handle-widget': true,
+      'menu-open': this.actionsMenuOpen,
+    };
+    const actionsMenuStyle = styleMap({
+      left: `${this.actionsMenuPosition.left}px`,
+      top: `${this.actionsMenuPosition.top}px`,
+      maxHeight: `${this.actionsMenuMaxHeight}px`,
+    });
+    const query = this.actionsSearch.trim().toLowerCase();
+    const conversionItems = textConversionConfigs.filter(
+      item =>
+        item.flavour !== 'affine:divider' &&
+        this.store.schema.flavourSchemaMap.has(item.flavour) &&
+        (!query || item.name.toLowerCase().includes(query))
+    );
+    const colors = [
+      ['Default', undefined],
+      ['Red', '#e25555'],
+      ['Orange', '#d9822b'],
+      ['Yellow', '#c99a19'],
+      ['Green', '#3f9b6d'],
+      ['Blue', '#4b82d0'],
+      ['Purple', '#8a63c7'],
+      ['Grey', '#8b8d93'],
+    ] as const;
 
     return html`
-      <div class="affine-drag-handle-widget">
+      <div class=${classMap(widgetClasses)}>
         <div class="affine-add-block-widget-container">
           <affine-add-block-widget
             .visible=${this.showAddBlockWidget && this.mode === 'page'}
@@ -284,6 +471,218 @@ export class AffineDragHandleWidget extends WidgetComponent<RootBlockModel> {
           </div>
         </div>
         <div class="affine-drag-hover-rect" style=${hoverRectStyle}></div>
+        ${
+          this.actionsMenuOpen
+            ? html`
+                <div
+                  class="block-actions-menu"
+                  style=${actionsMenuStyle}
+                  role="menu"
+                  @pointerdown=${(event: PointerEvent) =>
+                    event.stopPropagation()}
+                  @click=${(event: MouseEvent) => event.stopPropagation()}
+                >
+                  <div class="block-actions-search-row">
+                    ${
+                      this.actionsMenuPanel !== 'main'
+                        ? html`<button
+                            class="block-actions-back"
+                            aria-label="Back"
+                            @click=${() => {
+                              this.actionsMenuPanel = 'main';
+                            }}
+                          >
+                            ‹
+                          </button>`
+                        : nothing
+                    }
+                    <input
+                      class="block-actions-search"
+                      type="search"
+                      placeholder=${
+                        this.actionsMenuPanel === 'main'
+                          ? 'Search actions…'
+                          : this.actionsMenuPanel === 'turn-into'
+                            ? 'Search block types…'
+                            : 'Search colors…'
+                      }
+                      .value=${this.actionsSearch}
+                      @input=${(event: InputEvent) => {
+                        this.actionsSearch = (
+                          event.currentTarget as HTMLInputElement
+                        ).value;
+                      }}
+                    />
+                  </div>
+
+                  ${
+                    this.actionsMenuPanel === 'turn-into'
+                      ? html`
+                          <div class="block-actions-section-label">
+                            Turn into
+                          </div>
+                          ${conversionItems.map(
+                            item => html`
+                              <button
+                                class="block-action"
+                                role="menuitem"
+                                @click=${() =>
+                                  this._convertActionsBlock(
+                                    item.flavour,
+                                    item.type
+                                  )}
+                              >
+                                <span class="block-action-icon"
+                                  >${item.icon}</span
+                                ><span>${item.name}</span>
+                              </button>
+                            `
+                          )}
+                          ${([0, 1, 2, 3, 4] as const)
+                            .filter(level =>
+                              (level === 0
+                                ? 'toggle list'
+                                : `toggle heading ${level}`
+                              ).includes(query)
+                            )
+                            .map(
+                              level => html`
+                                <button
+                                  class="block-action"
+                                  role="menuitem"
+                                  @click=${() =>
+                                    this._convertActionsBlock(
+                                      'affine:list',
+                                      'toggle',
+                                      level
+                                    )}
+                                >
+                                  <span class="block-action-icon">▸</span>
+                                  <span
+                                    >${
+                                      level === 0
+                                        ? 'Toggle list'
+                                        : `Toggle heading ${level}`
+                                    }</span
+                                  >
+                                </button>
+                              `
+                            )}
+                        `
+                      : this.actionsMenuPanel === 'color'
+                        ? html`
+                            <div class="block-actions-section-label">Color</div>
+                            <div class="block-color-grid">
+                              ${colors
+                                .filter(([name]) =>
+                                  name.toLowerCase().includes(query)
+                                )
+                                .map(
+                                  ([name, color]) => html`
+                                    <button
+                                      class="block-color-action"
+                                      role="menuitem"
+                                      @click=${() =>
+                                        this._formatActionsBlock(color)}
+                                    >
+                                      <span
+                                        class="block-color-swatch"
+                                        style=${
+                                          color
+                                            ? `--swatch-color: ${color}`
+                                            : ''
+                                        }
+                                      ></span>
+                                      <span>${name}</span>
+                                    </button>
+                                  `
+                                )}
+                            </div>
+                          `
+                        : html`
+                            <div class="block-actions-section-label">Block</div>
+                            ${
+                              !query || 'turn into'.includes(query)
+                                ? html`<button
+                                    class="block-action"
+                                    role="menuitem"
+                                    @click=${() => {
+                                      this.actionsMenuPanel = 'turn-into';
+                                      this.actionsSearch = '';
+                                    }}
+                                  >
+                                    <span class="block-action-symbol">↪</span>
+                                    <span>Turn into</span
+                                    ><span class="chevron">›</span>
+                                  </button>`
+                                : nothing
+                            }
+                            ${
+                              !query || 'color'.includes(query)
+                                ? html`<button
+                                    class="block-action"
+                                    role="menuitem"
+                                    @click=${() => {
+                                      this.actionsMenuPanel = 'color';
+                                      this.actionsSearch = '';
+                                    }}
+                                  >
+                                    <span class="block-action-icon"
+                                      >${PaletteIcon()}</span
+                                    ><span>Color</span
+                                    ><span class="chevron">›</span>
+                                  </button>`
+                                : nothing
+                            }
+                            <div class="block-actions-divider"></div>
+                            ${
+                              !query || 'copy'.includes(query)
+                                ? html`<button
+                                    class="block-action"
+                                    role="menuitem"
+                                    @click=${this._copyActionsBlock}
+                                  >
+                                    <span class="block-action-icon"
+                                      >${CopyIcon()}</span
+                                    ><span>Copy</span>
+                                  </button>`
+                                : nothing
+                            }
+                            ${
+                              !query || 'duplicate'.includes(query)
+                                ? html`<button
+                                    class="block-action"
+                                    role="menuitem"
+                                    @click=${this._duplicateActionsBlock}
+                                  >
+                                    <span class="block-action-icon"
+                                      >${DuplicateIcon()}</span
+                                    ><span>Duplicate</span>
+                                  </button>`
+                                : nothing
+                            }
+                            ${
+                              !query || 'delete'.includes(query)
+                                ? html`<button
+                                    class="block-action danger"
+                                    role="menuitem"
+                                    @click=${this._deleteActionsBlock}
+                                  >
+                                    <span class="block-action-icon"
+                                      >${DeleteIcon()}</span
+                                    ><span>Delete</span>
+                                  </button>`
+                                : nothing
+                            }
+                            <div class="block-actions-hint">
+                              Hold and drag the six dots to move this block
+                            </div>
+                          `
+                  }
+                </div>
+              `
+            : nothing
+        }
       </div>
     `;
   }

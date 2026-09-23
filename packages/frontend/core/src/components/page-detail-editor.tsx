@@ -1,5 +1,6 @@
 import './page-detail-editor.css';
 
+import { ImageIcon } from '@blocksuite/icons/rc';
 import { useLiveData, useService } from '@toeverything/infra';
 import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,6 +10,7 @@ import { BlockSuiteEditor } from '../blocksuite/block-suite-editor';
 import { DocService } from '../modules/doc';
 import { EditorService } from '../modules/editor';
 import { EditorSettingService } from '../modules/editor-setting';
+import { useCoverImageUrl } from './hooks/affine/use-cover-image-url';
 import * as styles from './page-detail-editor.css';
 
 declare global {
@@ -62,6 +64,10 @@ export const PageDetailEditor = ({
   const [coverPositionX, setCoverPositionX] = useState(50);
   const [coverPositionY, setCoverPositionY] = useState(50);
   const [coverZoom, setCoverZoom] = useState(1.2);
+  const coverUrl = useCoverImageUrl(
+    docMeta?.headerImage,
+    editor.doc.blockSuiteDoc.blobSync
+  );
   const pageWidth = useLiveData(doc.properties$.selector(p => p.pageWidth));
 
   const isSharedMode = editor.isSharedMode;
@@ -109,24 +115,24 @@ export const PageDetailEditor = ({
   }, []);
 
   const onCoverSelected = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file || !file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.addEventListener('load', () => {
-        if (typeof reader.result !== 'string') return;
+      try {
+        const blobId = await editor.doc.blockSuiteDoc.blobSync.set(file);
         doc.record.setMeta({
-          headerImage: reader.result,
+          headerImage: blobId,
           headerImagePosition: 50,
           headerImagePositionX: 50,
           headerImagePositionY: 50,
           headerImageZoom: 1.2,
         });
-      });
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Failed to save page cover', error);
+      }
     },
-    [doc]
+    [doc, editor.doc.blockSuiteDoc.blobSync]
   );
 
   const removeCover = useCallback(() => {
@@ -215,7 +221,7 @@ export const PageDetailEditor = ({
         hidden
         onChange={onCoverSelected}
       />
-      {showPageCover && docMeta?.headerImage ? (
+      {showPageCover && docMeta?.headerImage && coverUrl ? (
         <div
           className={styles.coverShell}
           data-repositioning={repositioning || undefined}
@@ -226,7 +232,7 @@ export const PageDetailEditor = ({
         >
           <img
             className={styles.coverImage}
-            src={docMeta.headerImage}
+            src={coverUrl}
             alt="Document cover"
             draggable={false}
             style={{
@@ -283,12 +289,6 @@ export const PageDetailEditor = ({
             </>
           )}
         </div>
-      ) : showPageCover && !readonly ? (
-        <div className={styles.coverAddRow}>
-          <button className={styles.coverAddButton} onClick={chooseCover}>
-            + Add cover
-          </button>
-        </div>
       ) : null}
 
       <BlockSuiteEditor
@@ -301,6 +301,18 @@ export const PageDetailEditor = ({
         page={editor.doc.blockSuiteDoc}
         shared={isSharedMode}
         readonly={readonly}
+        headerAction={
+          showPageCover && !readonly && !docMeta?.headerImage ? (
+            <button
+              type="button"
+              className={styles.coverAddButton}
+              onClick={chooseCover}
+            >
+              <ImageIcon className={styles.coverAddIcon} />
+              <span>Add cover</span>
+            </button>
+          ) : undefined
+        }
         onEditorReady={onLoad}
       />
     </>

@@ -177,37 +177,31 @@ export const coverZoomValue = style({
   pointerEvents: 'none',
 });
 
-export const coverAddRow = style({
-  width: '100%',
-  maxWidth: 'var(--affine-editor-width)',
-  boxSizing: 'border-box',
-  margin: '0 auto -28px',
-  padding: '10px var(--affine-editor-side-padding, 24px) 0',
-  position: 'relative',
-  zIndex: 2,
-  pointerEvents: 'none',
-});
-
 export const coverAddButton = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
   appearance: 'none',
   border: 0,
   borderRadius: 5,
-  padding: '5px 8px',
-  color: 'var(--affine-text-disable-color)',
+  padding: 4,
+  color: 'var(--affine-text-secondary-color)',
   background: 'transparent',
   fontFamily: 'inherit',
   fontSize: 12,
-  lineHeight: '18px',
+  lineHeight: '16px',
   cursor: 'pointer',
-  pointerEvents: 'auto',
-  opacity: 0,
-  transition: 'opacity 120ms ease, background-color 120ms ease',
+  transition: 'color 120ms ease, background-color 120ms ease',
   selectors: {
-    [`${coverAddRow}:hover &`]: { opacity: 1 },
-    '&:focus-visible': { opacity: 1 },
     '&:hover': {
       color: 'var(--affine-text-primary-color)',
       background: 'var(--affine-hover-color)',
     },
   },
+});
+
+export const coverAddIcon = style({
+  width: 16,
+  height: 16,
+  flexShrink: 0,
 });

@@ -6,6 +6,8 @@ import {
   BookmarkBlockSchema,
   CalloutBlockSchema,
   CodeBlockSchema,
+  ColumnBlockSchema,
+  ColumnsBlockSchema,
   DatabaseBlockSchema,
   DividerBlockSchema,
   EdgelessTextBlockSchema,
@@ -32,6 +34,8 @@ import type { z } from 'zod';
 /** Built-in first party block models built for affine */
 export const AffineSchemas: z.infer<typeof BlockSchema>[] = [
   CodeBlockSchema,
+  ColumnsBlockSchema,
+  ColumnBlockSchema,
   ParagraphBlockSchema,
   RootBlockSchema,
   ListBlockSchema,

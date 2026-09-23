@@ -1,5 +1,3 @@
-import { NoteBlockModel, RootBlockModel } from '@blocksuite/affine-model';
-import { matchModels } from '@blocksuite/affine-shared/utils';
 import {
   BLOCK_ID_ATTR,
   type BlockComponent,
@@ -18,6 +16,27 @@ export type BlockInfo = {
   rect: Rect;
 };
 
+export function isGutterDrag(
+  blocks: BlockInfo[],
+  anchorX: number,
+  anchorY: number
+) {
+  const leaves = blocks.filter(block => !block.element.model.children.length);
+  const rowCandidates = leaves.length ? leaves : blocks;
+  const distanceToRow = (block: BlockInfo) =>
+    Math.max(
+      block.rect.top - anchorY,
+      anchorY - block.rect.top - block.rect.height,
+      0
+    );
+  const nearestDistance = Math.min(...rowCandidates.map(distanceToRow));
+  const nearestRow = rowCandidates.filter(
+    block => distanceToRow(block) === nearestDistance
+  );
+  const rowLeft = Math.min(...nearestRow.map(block => block.rect.left));
+  return nearestRow.length > 0 && anchorX < rowLeft && anchorX >= rowLeft - 180;
+}
+
 function rectIntersects(a: Rect, b: Rect) {
   return (
     a.left < b.left + b.width &&
@@ -32,15 +51,11 @@ function rectIncludesTopAndBottom(a: Rect, b: Rect) {
 }
 
 function filterBlockInfos(blockInfos: BlockInfo[], userRect: Rect) {
-  const results: BlockInfo[] = [];
-  for (const blockInfo of blockInfos) {
-    const rect = blockInfo.rect;
-    if (userRect.top + userRect.height < rect.top) break;
-
-    results.push(blockInfo);
-  }
-
-  return results;
+  // Block tree order is not visual top-to-bottom order in a columns layout.
+  // An early break after the first column skipped every later column.
+  return blockInfos.filter(
+    blockInfo => blockInfo.rect.top <= userRect.top + userRect.height
+  );
 }
 
 function filterBlockInfosByParent(
@@ -138,9 +153,17 @@ export function isDragArea(e: PointerEventState) {
   if (!(el instanceof Element)) {
     return false;
   }
+  if (
+    el.closest('a, button, input, textarea, select, [contenteditable="true"]')
+  ) {
+    return false;
+  }
   const block = el.closest<BlockComponent>(`[${BLOCK_ID_ATTR}]`);
   if (!block) {
     return false;
   }
-  return matchModels(block.model, [RootBlockModel, NoteBlockModel]);
+  // The visible gutter belongs to the nearest block element, not always to
+  // the root/note wrapper. Let any non-interactive block surface start a range
+  // drag so the selection begins exactly where the pointer is pressed.
+  return true;
 }

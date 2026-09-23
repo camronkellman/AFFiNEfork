@@ -183,6 +183,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       };
       dataSource.serviceSet(GalleryCoverProvider, {
         resolve: resolveCover,
+        upload: file => this.host.store.blobSync.set(file),
         recordCover: rowId => {
           const model = this.host.store.getBlock(rowId)?.model as
             | ParagraphBlockModel
@@ -201,6 +202,12 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
             | ParagraphBlockModel
             | undefined;
           return model?.props['meta:description$'];
+        },
+        recordIcon: rowId => {
+          const model = this.host.store.getBlock(rowId)?.model as
+            | ParagraphBlockModel
+            | undefined;
+          return model?.props['meta:pageIcon$'];
         },
         setRecordCover: (rowId, source) => {
           const model = this.host.store.getBlock(rowId)?.model as
@@ -260,6 +267,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
               source.props['meta:galleryCoverPositionY'],
             'meta:galleryCoverZoom': source.props['meta:galleryCoverZoom'],
             'meta:description': source.props['meta:description'],
+            'meta:pageIcon': source.props['meta:pageIcon'],
           });
           dataSource.properties$.value.forEach(propertyId => {
             if (propertyId === 'title' || propertyId === 'type') return;
@@ -617,13 +625,15 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       const nextCover = docMeta.headerImage;
       if (
         paragraph.props['meta:cover'] === nextCover &&
-        paragraph.props['meta:description'] === docMeta.description
+        paragraph.props['meta:description'] === docMeta.description &&
+        paragraph.props['meta:pageIcon'] === docMeta.pageIcon
       ) {
         return;
       }
       this.model.store.updateBlock(paragraph, {
         'meta:cover': nextCover,
         'meta:description': docMeta.description,
+        'meta:pageIcon': docMeta.pageIcon,
       });
     });
   }

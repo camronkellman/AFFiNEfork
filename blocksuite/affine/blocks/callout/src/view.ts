@@ -24,6 +24,10 @@ export class CalloutViewExtension extends ViewExtensionProvider {
     context.register([
       FlavourExtension('affine:callout'),
       BlockViewExtension('affine:callout', literal`affine-callout`),
+      FlavourExtension('affine:columns'),
+      FlavourExtension('affine:column'),
+      BlockViewExtension('affine:columns', literal`affine-columns`),
+      BlockViewExtension('affine:column', literal`affine-column`),
       CalloutKeymapExtension,
       SlashMenuConfigExtension('affine:callout', calloutSlashMenuConfig),
       ...createBuiltinToolbarConfigExtension('affine:callout'),
