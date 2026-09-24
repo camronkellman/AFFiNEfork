@@ -1,3 +1,5 @@
+import { NoteBlockModel, RootBlockModel } from '@blocksuite/affine-model';
+import { matchModels } from '@blocksuite/affine-shared/utils';
 import {
   BLOCK_ID_ATTR,
   type BlockComponent,
@@ -16,27 +18,6 @@ export type BlockInfo = {
   rect: Rect;
 };
 
-export function isGutterDrag(
-  blocks: BlockInfo[],
-  anchorX: number,
-  anchorY: number
-) {
-  const leaves = blocks.filter(block => !block.element.model.children.length);
-  const rowCandidates = leaves.length ? leaves : blocks;
-  const distanceToRow = (block: BlockInfo) =>
-    Math.max(
-      block.rect.top - anchorY,
-      anchorY - block.rect.top - block.rect.height,
-      0
-    );
-  const nearestDistance = Math.min(...rowCandidates.map(distanceToRow));
-  const nearestRow = rowCandidates.filter(
-    block => distanceToRow(block) === nearestDistance
-  );
-  const rowLeft = Math.min(...nearestRow.map(block => block.rect.left));
-  return nearestRow.length > 0 && anchorX < rowLeft && anchorX >= rowLeft - 180;
-}
-
 function rectIntersects(a: Rect, b: Rect) {
   return (
     a.left < b.left + b.width &&
@@ -51,8 +32,8 @@ function rectIncludesTopAndBottom(a: Rect, b: Rect) {
 }
 
 function filterBlockInfos(blockInfos: BlockInfo[], userRect: Rect) {
-  // Block tree order is not visual top-to-bottom order in a columns layout.
-  // An early break after the first column skipped every later column.
+  // HALO: block tree order is not top-to-bottom order inside `/columns`, so
+  // breaking at the first block below the rect would skip later columns.
   return blockInfos.filter(
     blockInfo => blockInfo.rect.top <= userRect.top + userRect.height
   );
@@ -102,6 +83,7 @@ export function getSelectingBlockPaths(
   if (len === 0) return blockPaths;
 
   // To get the single target parent block info
+  const containingBlocks: BlockInfo[] = [];
   for (const block of filteredBlockInfos) {
     const rect = block.rect;
 
@@ -110,6 +92,29 @@ export function getSelectingBlockPaths(
       rectIncludesTopAndBottom(rect, userRect)
     ) {
       singleTargetParentBlock = block;
+      containingBlocks.push(block);
+    }
+  }
+
+  // HALO: side-by-side `/columns` blocks can each contain the rect's top and
+  // bottom. Only treat the rect as inside one block when the other candidates
+  // are its ancestors; otherwise select every intersecting block.
+  if (singleTargetParentBlock) {
+    const target = singleTargetParentBlock.element;
+    const ancestorIds = new Set<string>();
+    let parent = target.store.getParent(target.model);
+    while (parent && !ancestorIds.has(parent.id)) {
+      ancestorIds.add(parent.id);
+      parent = target.store.getParent(parent);
+    }
+    if (
+      containingBlocks.some(
+        block =>
+          block !== singleTargetParentBlock &&
+          !ancestorIds.has(block.element.model.id)
+      )
+    ) {
+      singleTargetParentBlock = null;
     }
   }
 
@@ -153,17 +158,9 @@ export function isDragArea(e: PointerEventState) {
   if (!(el instanceof Element)) {
     return false;
   }
-  if (
-    el.closest('a, button, input, textarea, select, [contenteditable="true"]')
-  ) {
-    return false;
-  }
   const block = el.closest<BlockComponent>(`[${BLOCK_ID_ATTR}]`);
   if (!block) {
     return false;
   }
-  // The visible gutter belongs to the nearest block element, not always to
-  // the root/note wrapper. Let any non-interactive block surface start a range
-  // drag so the selection begins exactly where the pointer is pressed.
-  return true;
+  return matchModels(block.model, [RootBlockModel, NoteBlockModel]);
 }

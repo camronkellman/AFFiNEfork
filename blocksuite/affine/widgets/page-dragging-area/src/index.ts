@@ -11,13 +11,15 @@ import {
   WidgetComponent,
   WidgetViewExtension,
 } from '@blocksuite/std';
+import { html, nothing } from 'lit';
+import { state } from 'lit/decorators.js';
+import { styleMap } from 'lit/directives/style-map.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
 import {
   type BlockInfo,
   getSelectingBlockPaths,
   isDragArea,
-  isGutterDrag,
   type Rect,
 } from './utils';
 
@@ -25,51 +27,75 @@ export const AFFINE_PAGE_DRAGGING_AREA_WIDGET =
   'affine-page-dragging-area-widget';
 
 export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel> {
-  static excludeFlavours: string[] = ['affine:note', 'affine:surface'];
+  // HALO: `affine:columns`/`affine:column` are layout wrappers. Excluding them
+  // makes a drag select the blocks inside the columns, not the whole row.
+  static excludeFlavours: string[] = [
+    'affine:note',
+    'affine:surface',
+    'affine:columns',
+    'affine:column',
+  ];
 
   private _dragging = false;
 
-  private _initialPointer = { x: 0, y: 0 };
+  private _initialContainerOffset: {
+    x: number;
+    y: number;
+  } = {
+    x: 0,
+    y: 0,
+  };
 
-  private _initialScrollOffset = { left: 0, top: 0 };
+  private _initialScrollOffset: {
+    top: number;
+    left: number;
+  } = {
+    top: 0,
+    left: 0,
+  };
 
   private _lastPointerState: PointerEventState | null = null;
 
   private _rafID = 0;
 
-  private _gutterDrag = false;
-
-  private _selectedBlockIds: string | null = null;
-
-  private readonly _preventNativeSelection = (event: Event) => {
-    event.preventDefault();
-  };
-
   private readonly _updateDraggingArea = (
     state: PointerEventState,
     shouldAutoScroll: boolean
   ) => {
+    const { x, y } = state;
+    const { x: startX, y: startY } = state.start;
+
+    const { left: initScrollX, top: initScrollY } = this._initialScrollOffset;
     if (!this._viewport) {
       return;
     }
-    const { clientX, clientY } = state.raw;
-    const scrollLeft = this.scrollContainer?.scrollLeft ?? 0;
-    const scrollTop = this.scrollContainer?.scrollTop ?? 0;
-    const anchorX =
-      this._initialPointer.x + this._initialScrollOffset.left - scrollLeft;
-    const anchorY =
-      this._initialPointer.y + this._initialScrollOffset.top - scrollTop;
-    const blocks = this._allBlocksWithRect;
-    // Dragging in the left gutter selects complete block rows, as in the
-    // reference editor. Elsewhere, retain spatial selection for columns.
-    const left = this._gutterDrag
-      ? Math.min(...blocks.map(block => block.rect.left)) - 1
-      : Math.min(anchorX, clientX);
-    const right = this._gutterDrag
-      ? Math.max(...blocks.map(block => block.rect.left + block.rect.width)) + 1
-      : Math.max(anchorX, clientX);
-    const top = Math.min(anchorY, clientY);
-    const bottom = Math.max(anchorY, clientY);
+    const { scrollLeft, scrollTop, scrollWidth, scrollHeight } = this._viewport;
+
+    const { x: initConX, y: initConY } = this._initialContainerOffset;
+    const { x: conX, y: conY } = state.containerOffset;
+
+    const { left: viewportLeft, top: viewportTop } = this._viewport;
+    let left = Math.min(
+      startX + initScrollX + initConX - viewportLeft,
+      x + scrollLeft + conX - viewportLeft
+    );
+    let right = Math.max(
+      startX + initScrollX + initConX - viewportLeft,
+      x + scrollLeft + conX - viewportLeft
+    );
+    let top = Math.min(
+      startY + initScrollY + initConY - viewportTop,
+      y + scrollTop + conY - viewportTop
+    );
+    let bottom = Math.max(
+      startY + initScrollY + initConY - viewportTop,
+      y + scrollTop + conY - viewportTop
+    );
+
+    left = Math.max(left, conX - viewportLeft);
+    right = Math.min(right, scrollWidth);
+    top = Math.max(top, conY - viewportTop);
+    bottom = Math.min(bottom, scrollHeight);
 
     const userRect = {
       left,
@@ -77,7 +103,13 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
       width: right - left,
       height: bottom - top,
     };
-    this._selectBlocksByRect(userRect, blocks);
+    this.rect = userRect;
+    this._selectBlocksByRect({
+      left: userRect.left + viewportLeft,
+      top: userRect.top + viewportTop,
+      width: userRect.width,
+      height: userRect.height,
+    });
     this._lastPointerState = state;
 
     if (shouldAutoScroll && this.scrollContainer) {
@@ -94,6 +126,8 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
     if (!this._viewport) {
       return [];
     }
+    const { scrollLeft, scrollTop } = this._viewport;
+
     const getAllNodeFromTree = (): BlockComponent[] => {
       const blocks: BlockComponent[] = [];
       this.host.view.walkThrough(node => {
@@ -105,13 +139,6 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
           view.model.role !== 'root' &&
           !AffinePageDraggingAreaWidget.excludeFlavours.includes(
             view.model.flavour
-          ) &&
-          // The columns are layout wrappers; their children are the selectable
-          // blocks. Including both makes the wrapper swallow its children.
-          !(
-            (view.model.flavour === 'affine:columns' ||
-              view.model.flavour === 'affine:column') &&
-            view.model.children.length > 0
           )
         ) {
           blocks.push(view);
@@ -128,8 +155,8 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
       return {
         element,
         rect: {
-          left: bounding.left,
-          top: bounding.top,
+          left: bounding.left + scrollLeft,
+          top: bounding.top + scrollTop,
           width: bounding.width,
           height: bounding.height,
         },
@@ -155,27 +182,11 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
     }
   }
 
-  private _finishDrag() {
-    this._clearRaf();
-    this._dragging = false;
-    document.removeEventListener(
-      'selectstart',
-      this._preventNativeSelection,
-      true
-    );
-    this._gutterDrag = false;
-    this._selectedBlockIds = null;
-    this._initialPointer = { x: 0, y: 0 };
-    this._initialScrollOffset = { left: 0, top: 0 };
-    this._lastPointerState = null;
-  }
-
-  private _selectBlocksByRect(userRect: Rect, blocks: BlockInfo[]) {
-    const blockPaths = getSelectingBlockPaths(blocks, userRect);
-    const ids = blockPaths.join(',');
-    if (ids === this._selectedBlockIds) return;
-    this._selectedBlockIds = ids;
-    const selections = blockPaths.map(blockPath => {
+  private _selectBlocksByRect(userRect: Rect) {
+    const selections = getSelectingBlockPaths(
+      this._allBlocksWithRect,
+      userRect
+    ).map(blockPath => {
       return this.host.selection.create(BlockSelection, {
         blockId: blockPath,
       });
@@ -197,25 +208,15 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
         if (!this._viewport) return;
 
         this._dragging = true;
-        document.addEventListener(
-          'selectstart',
-          this._preventNativeSelection,
-          true
-        );
-        window.getSelection()?.removeAllRanges();
-        this._initialPointer = {
-          x: state.raw.clientX,
-          y: state.raw.clientY,
-        };
+        const { scrollLeft, scrollTop } = this._viewport;
         this._initialScrollOffset = {
-          left: this.scrollContainer?.scrollLeft ?? 0,
-          top: this.scrollContainer?.scrollTop ?? 0,
+          left: scrollLeft,
+          top: scrollTop,
         };
-        this._gutterDrag = isGutterDrag(
-          this._allBlocksWithRect,
-          state.raw.clientX,
-          state.raw.clientY
-        );
+        this._initialContainerOffset = {
+          x: state.containerOffset.x,
+          y: state.containerOffset.y,
+        };
 
         return true;
       },
@@ -235,7 +236,6 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
         if (state.raw.pointerType === 'touch') return;
 
         ctx.get('defaultState').event.preventDefault();
-        window.getSelection()?.removeAllRanges();
 
         this._rafID = requestAnimationFrame(() => {
           this._updateDraggingArea(state, true);
@@ -249,7 +249,18 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
     this.handleEvent(
       'dragEnd',
       () => {
-        this._finishDrag();
+        this._clearRaf();
+        this._dragging = false;
+        this.rect = null;
+        this._initialScrollOffset = {
+          top: 0,
+          left: 0,
+        };
+        this._initialContainerOffset = {
+          x: 0,
+          y: 0,
+        };
+        this._lastPointerState = null;
       },
       {
         global: true,
@@ -268,17 +279,10 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
         global: true,
       }
     );
-
-    this._disposables.addFromEvent(document, 'pointercancel', () => {
-      if (this._dragging) this._finishDrag();
-    });
-    this._disposables.addFromEvent(window, 'blur', () => {
-      if (this._dragging) this._finishDrag();
-    });
   }
 
   override disconnectedCallback() {
-    this._finishDrag();
+    this._clearRaf();
     this._disposables.dispose();
     super.disconnectedCallback();
   }
@@ -293,6 +297,32 @@ export class AffinePageDraggingAreaWidget extends WidgetComponent<RootBlockModel
       });
     });
   }
+
+  override render() {
+    const rect = this.rect;
+    if (!rect) return nothing;
+
+    const style = {
+      left: rect.left + 'px',
+      top: rect.top + 'px',
+      width: rect.width + 'px',
+      height: rect.height + 'px',
+    };
+    return html`
+      <style>
+        .affine-page-dragging-area {
+          position: absolute;
+          background: var(--affine-hover-color);
+          z-index: 1;
+          pointer-events: none;
+        }
+      </style>
+      <div class="affine-page-dragging-area" style=${styleMap(style)}></div>
+    `;
+  }
+
+  @state()
+  accessor rect: Rect | null = null;
 }
 
 export const pageDraggingAreaWidget = WidgetViewExtension(

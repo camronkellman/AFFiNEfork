@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type BlockInfo, getSelectingBlockPaths, isGutterDrag } from '../utils';
+import { type BlockInfo, getSelectingBlockPaths } from '../utils';
 
 const block = (id: string, left: number, top: number): BlockInfo =>
   ({
@@ -33,8 +33,7 @@ describe('page drag selection across columns', () => {
     ).toEqual(['second-target']);
   });
 
-  it('selects complete rows across both columns for a gutter drag', () => {
-    expect(isGutterDrag(blocks, -20, 215)).toBe(true);
+  it('selects blocks in both columns when the drag spans them', () => {
     expect(
       getSelectingBlockPaths(blocks, {
         left: -1,
@@ -45,7 +44,14 @@ describe('page drag selection across columns', () => {
     ).toEqual(['first-target', 'second-target']);
   });
 
-  it('keeps a drag started inside a column spatial', () => {
-    expect(isGutterDrag(blocks, 210, 215)).toBe(false);
+  it('selects both side-by-side blocks for a thin drag across one row', () => {
+    expect(
+      getSelectingBlockPaths(blocks, {
+        left: 50,
+        top: 220,
+        width: 200,
+        height: 10,
+      })
+    ).toEqual(['first-target', 'second-target']);
   });
 });
