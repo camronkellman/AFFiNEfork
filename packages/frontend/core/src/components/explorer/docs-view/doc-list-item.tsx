@@ -33,8 +33,8 @@ import {
   useState,
 } from 'react';
 
-import { PagePreview } from '../../page-list/page-content-preview';
 import { useCoverImageUrl } from '../../hooks/affine/use-cover-image-url';
+import { PagePreview } from '../../page-list/page-content-preview';
 import { DocExplorerContext } from '../context';
 import { quickActions } from '../quick-actions.constants';
 import * as styles from './doc-list-item.css';

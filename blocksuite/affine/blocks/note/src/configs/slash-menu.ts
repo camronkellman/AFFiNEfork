@@ -76,90 +76,135 @@ const noteSlashMenuConfig: SlashMenuConfig = {
       ])
     ),
 
-    ...([1, 2, 3, 4, 5] as const).map(count => ({
-      name: count === 1 ? '1 column' : `${count} columns`,
-      description:
-        count === 1
-          ? 'Return a column layout to normal page flow.'
-          : `Create ${count} editable, resizable columns.`,
-      searchAlias: ['column', 'columns', `column${count}`, `columns${count}`],
-      icon: html`<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        ${Array.from({ length: count }, (_, index) => html`<rect
-          x=${1 + index * (18 / count)} y="3" width=${18 / count - 2}
-          height="14" rx="1" stroke="currentColor" stroke-width="1.3" />`)}
-      </svg>`,
-      group: `3_Layout@${count}`,
-      when: ({ model }) => {
-        if (!model.store.schema.flavourSchemaMap.has('affine:columns')) return false;
-        const parent = model.store.getParent(model);
-        return parent?.flavour === 'affine:note' || parent?.flavour === 'affine:column';
-      },
-      action: ({ std, model }) => {
-        const store = std.store;
-        const parent = store.getParent(model);
-        if (!parent) return;
-        if (count === 1) {
-          const row = parent.flavour === 'affine:column'
-            ? store.getParent(parent)
-            : null;
-          const outer = row ? store.getParent(row) : null;
-          if (row?.flavour === 'affine:columns' && outer) {
-            for (const column of [...row.children]) {
-              if (column.children.length) {
-                store.moveBlocks([...column.children], outer, row, true);
+    ...([1, 2, 3, 4, 5] as const).map(
+      count =>
+        ({
+          name: count === 1 ? '1 column' : `${count} columns`,
+          description:
+            count === 1
+              ? 'Return a column layout to normal page flow.'
+              : `Create ${count} editable, resizable columns.`,
+          searchAlias: [
+            'column',
+            'columns',
+            `column${count}`,
+            `columns${count}`,
+          ],
+          icon: html`<svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            ${Array.from(
+              { length: count },
+              (_, index) => html`<rect
+                x=${1 + index * (18 / count)}
+                y="3"
+                width=${18 / count - 2}
+                height="14"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.3"
+              ></rect>`
+            )}
+          </svg>`,
+          group: `3_Layout@${count}`,
+          when: ({ model }) => {
+            if (!model.store.schema.flavourSchemaMap.has('affine:columns'))
+              return false;
+            const parent = model.store.getParent(model);
+            return (
+              parent?.flavour === 'affine:note' ||
+              parent?.flavour === 'affine:column'
+            );
+          },
+          action: ({ std, model }) => {
+            const store = std.store;
+            const parent = store.getParent(model);
+            if (!parent) return;
+            if (count === 1) {
+              const row =
+                parent.flavour === 'affine:column'
+                  ? store.getParent(parent)
+                  : null;
+              const outer = row ? store.getParent(row) : null;
+              if (row?.flavour === 'affine:columns' && outer) {
+                for (const column of row.children) {
+                  if (column.children.length) {
+                    store.moveBlocks([...column.children], outer, row, true);
+                  }
+                }
+                store.deleteBlock(row);
+              } else {
+                std.command.exec(updateBlockType, {
+                  flavour: 'affine:paragraph',
+                  props: { type: 'text' },
+                });
               }
+              return;
             }
-            store.deleteBlock(row);
-          } else {
-            std.command.exec(updateBlockType, {
-              flavour: 'affine:paragraph',
-              props: { type: 'text' },
-            });
-          }
-          return;
-        }
-        const existing = parent.flavour === 'affine:column'
-          ? store.getParent(parent)
-          : null;
-        if (existing?.flavour === 'affine:columns') {
-          const row = existing as ColumnsBlockModel;
-          const columns = [...row.children];
-          if (columns.length > count) {
-            const destination = columns[count - 1];
-            for (const column of columns.slice(count)) {
-              if (column.children.length) {
-                store.moveBlocks([...column.children], destination);
+            const existing =
+              parent.flavour === 'affine:column'
+                ? store.getParent(parent)
+                : null;
+            if (existing?.flavour === 'affine:columns') {
+              const row = existing as ColumnsBlockModel;
+              const columns = [...row.children];
+              if (columns.length > count) {
+                const destination = columns[count - 1];
+                for (const column of columns.slice(count)) {
+                  if (column.children.length) {
+                    store.moveBlocks([...column.children], destination);
+                  }
+                  store.deleteBlock(column);
+                }
+              } else {
+                for (let index = columns.length; index < count; index++) {
+                  const columnId = store.addBlock('affine:column', {}, row);
+                  const column = store.getBlock(columnId)?.model;
+                  if (column) store.addBlock('affine:paragraph', {}, column);
+                }
               }
-              store.deleteBlock(column);
+              row.props.widths$.value = Array.from(
+                { length: count },
+                () => 100 / count
+              );
+              if (model.text?.length === 0) store.deleteBlock(model);
+              return;
             }
-          } else {
-            for (let index = columns.length; index < count; index++) {
+            const [rowId] = store.addSiblingBlocks(
+              model,
+              [
+                {
+                  flavour: 'affine:columns',
+                  props: {
+                    widths: Array.from({ length: count }, () => 100 / count),
+                  },
+                },
+              ],
+              'after'
+            );
+            const row = rowId ? store.getBlock(rowId)?.model : null;
+            if (!row) return;
+            let firstParagraph: string | undefined;
+            for (let index = 0; index < count; index++) {
               const columnId = store.addBlock('affine:column', {}, row);
               const column = store.getBlock(columnId)?.model;
-              if (column) store.addBlock('affine:paragraph', {}, column);
+              if (!column) continue;
+              const paragraphId = store.addBlock(
+                'affine:paragraph',
+                {},
+                column
+              );
+              if (index === 0) firstParagraph = paragraphId;
             }
-          }
-          row.props.widths$.value = Array(count).fill(100 / count);
-          if (model.text?.length === 0) store.deleteBlock(model);
-          return;
-        }
-        const [rowId] = store.addSiblingBlocks(model, [
-          { flavour: 'affine:columns', props: { widths: Array(count).fill(100 / count) } },
-        ], 'after');
-        const row = rowId ? store.getBlock(rowId)?.model : null;
-        if (!row) return;
-        let firstParagraph: string | undefined;
-        for (let index = 0; index < count; index++) {
-          const columnId = store.addBlock('affine:column', {}, row);
-          const column = store.getBlock(columnId)?.model;
-          if (!column) continue;
-          const paragraphId = store.addBlock('affine:paragraph', {}, column);
-          if (index === 0) firstParagraph = paragraphId;
-        }
-        if (model.text?.length === 0) store.deleteBlock(model);
-        if (firstParagraph) focusTextModel(std, firstParagraph);
-      },
-    } satisfies SlashMenuActionItem)),
+            if (model.text?.length === 0) store.deleteBlock(model);
+            if (firstParagraph) focusTextModel(std, firstParagraph);
+          },
+        }) satisfies SlashMenuActionItem
+    ),
 
     ...textAlignConfigs.map((config, index) =>
       createAlignItem(config, `2_Align@${index++}`)

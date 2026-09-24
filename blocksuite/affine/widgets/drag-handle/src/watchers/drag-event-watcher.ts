@@ -47,11 +47,11 @@ import { assertType } from '@blocksuite/global/utils';
 import {
   BlockComponent,
   BlockSelection,
-  TextSelection,
   type BlockStdScope,
   type DragFromBlockSuite,
   type DragPayload,
   type DropPayload,
+  TextSelection,
 } from '@blocksuite/std';
 import {
   GfxBlockElementModel,
@@ -1479,12 +1479,19 @@ export class DragEventWatcher {
         if (!selectedContent) return !!this.widget.anchorBlockId.peek();
         if (this.mode !== 'page' || this.widget.store.readonly) return false;
         const block = target as BlockComponent;
-        if (this.std.selection.filter(BlockSelection).some(selection =>
-          selection.blockId === block.blockId
-        )) return true;
+        if (
+          this.std.selection
+            .filter(BlockSelection)
+            .some(selection => selection.blockId === block.blockId)
+        )
+          return true;
         if (!this.std.selection.find(TextSelection)) return false;
         const nativeSelection = window.getSelection();
-        if (!nativeSelection || nativeSelection.isCollapsed || !nativeSelection.rangeCount) {
+        if (
+          !nativeSelection ||
+          nativeSelection.isCollapsed ||
+          !nativeSelection.rangeCount
+        ) {
           return false;
         }
         return nativeSelection.getRangeAt(0).intersectsNode(block);
@@ -1525,9 +1532,9 @@ export class DragEventWatcher {
             .map(id => this.std.view.getBlock(id))
             .filter((view): view is BlockComponent => !!view);
           if (note && selectedViews.length) {
-            const top = Math.min(...selectedViews.map(view =>
-              view.getBoundingClientRect().top
-            ));
+            const top = Math.min(
+              ...selectedViews.map(view => view.getBoundingClientRect().top)
+            );
             const input = location.current.input;
             // The preview is note-width, not source-cell or handle-width.
             // Keep the grabbed point aligned to its original note position,

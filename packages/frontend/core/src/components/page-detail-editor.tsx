@@ -219,7 +219,9 @@ export const PageDetailEditor = ({
         type="file"
         accept="image/*"
         hidden
-        onChange={onCoverSelected}
+        onChange={event => {
+          onCoverSelected(event).catch(console.error);
+        }}
       />
       {showPageCover && docMeta?.headerImage && coverUrl ? (
         <div
