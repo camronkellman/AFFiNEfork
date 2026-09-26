@@ -37,7 +37,6 @@ const FormSection = ({
 
 export const CreateWorkspaceDialog = ({
   serverId,
-  localOnly,
   close,
   ...props
 }: DialogComponentProps<GLOBAL_DIALOG_SCHEMA['create-workspace']>) => {
@@ -45,7 +44,7 @@ export const CreateWorkspaceDialog = ({
 
   const [workspaceName, setWorkspaceName] = useState('');
   const [inputServerId, setInputServerId] = useState(
-    localOnly ? 'local' : (serverId ?? 'affine-cloud')
+    serverId ?? 'affine-cloud'
   );
 
   const serversService = useService(ServersService);
@@ -102,18 +101,16 @@ export const CreateWorkspaceDialog = ({
         }
       />
 
-      {!localOnly && (
-        <FormSection
-          label={t['com.affine.nameWorkspace.subtitle.workspace-type']()}
-          input={
-            <ServerSelector
-              className={styles.select}
-              selectedId={inputServerId}
-              onChange={setInputServerId}
-            />
-          }
-        />
-      )}
+      <FormSection
+        label={t['com.affine.nameWorkspace.subtitle.workspace-type']()}
+        input={
+          <ServerSelector
+            className={styles.select}
+            selectedId={inputServerId}
+            onChange={setInputServerId}
+          />
+        }
+      />
     </ConfirmModal>
   );
 };
@@ -143,7 +140,7 @@ const CustomConfirmButton = ({
     if (loading) return;
     setLoading(true);
     track.$.$.$.createWorkspace({
-      flavour: !server || server.id === 'local' ? 'local' : 'affine-cloud',
+      flavour: !server ? 'local' : 'affine-cloud',
     });
 
     // this will be the last step for web for now
@@ -151,7 +148,7 @@ const CustomConfirmButton = ({
     try {
       const res = await buildShowcaseWorkspace(
         workspacesService,
-        !server || server.id === 'local' ? 'local' : server.id,
+        server?.id ?? 'local',
         workspaceName
       );
       onCreated(res);

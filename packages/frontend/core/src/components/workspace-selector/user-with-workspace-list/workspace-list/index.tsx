@@ -229,12 +229,10 @@ export const AFFiNEWorkspaceList = ({
   onEventEnd,
   onClickWorkspace,
   showEnableCloudButton,
-  localOnly,
 }: {
   onClickWorkspace?: (workspaceMetadata: WorkspaceMetadata) => void;
   onEventEnd?: () => void;
   showEnableCloudButton?: boolean;
-  localOnly?: boolean;
 }) => {
   const workspacesService = useService(WorkspacesService);
   const workspaces = useLiveData(workspacesService.list.workspaces$);
@@ -291,24 +289,20 @@ export const AFFiNEWorkspaceList = ({
   return (
     <>
       {/* 1. affine-cloud */}
-      {!localOnly && (
-        <>
-          <FrameworkScope
-            key={affineCloudServer.id}
-            scope={affineCloudServer.scope}
-          >
-            <CloudWorkSpaceList
-              server={affineCloudServer}
-              workspaces={cloudWorkspaces.filter(
-                ({ flavour }) => flavour === affineCloudServer.id
-              )}
-              onClickWorkspace={handleClickWorkspace}
-            />
-          </FrameworkScope>
-          {(localWorkspaces.length > 0 || selfhostServers.length > 0) && (
-            <Divider size="thinner" className={styles.serverDivider} />
+      <FrameworkScope
+        key={affineCloudServer.id}
+        scope={affineCloudServer.scope}
+      >
+        <CloudWorkSpaceList
+          server={affineCloudServer}
+          workspaces={cloudWorkspaces.filter(
+            ({ flavour }) => flavour === affineCloudServer.id
           )}
-        </>
+          onClickWorkspace={handleClickWorkspace}
+        />
+      </FrameworkScope>
+      {(localWorkspaces.length > 0 || selfhostServers.length > 0) && (
+        <Divider size="thinner" className={styles.serverDivider} />
       )}
 
       {/* 2. local */}
@@ -316,33 +310,30 @@ export const AFFiNEWorkspaceList = ({
         workspaces={localWorkspaces}
         onClickWorkspace={handleClickWorkspace}
         onClickEnableCloud={
-          !localOnly && showEnableCloudButton ? onClickEnableCloud : undefined
+          showEnableCloudButton ? onClickEnableCloud : undefined
         }
       />
-      {!localOnly && (
-        <>
-          {selfhostServers.length > 0 && (
+      {selfhostServers.length > 0 && (
+        <Divider size="thinner" className={styles.serverDivider} />
+      )}
+
+      {/* 3. selfhost */}
+      {selfhostServers.map((server, index) => (
+        <FrameworkScope key={server.id} scope={server.scope}>
+          <CloudWorkSpaceList
+            server={server}
+            workspaces={cloudWorkspaces.filter(
+              ({ flavour }) => flavour === server.id
+            )}
+            onClickWorkspace={handleClickWorkspace}
+          />
+          {index !== selfhostServers.length - 1 && (
             <Divider size="thinner" className={styles.serverDivider} />
           )}
-          {/* 3. selfhost */}
-          {selfhostServers.map((server, index) => (
-            <FrameworkScope key={server.id} scope={server.scope}>
-              <CloudWorkSpaceList
-                server={server}
-                workspaces={cloudWorkspaces.filter(
-                  ({ flavour }) => flavour === server.id
-                )}
-                onClickWorkspace={handleClickWorkspace}
-              />
-              {index !== selfhostServers.length - 1 && (
-                <Divider size="thinner" className={styles.serverDivider} />
-              )}
-            </FrameworkScope>
-          ))}
-          <AddServer />
-          <Divider size="thinner" />
-        </>
-      )}
+        </FrameworkScope>
+      ))}
+      <AddServer />
+      <Divider size="thinner" />
     </>
   );
 };
