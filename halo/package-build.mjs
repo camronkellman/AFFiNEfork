@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  existsSync,
   readdirSync,
   readFileSync,
   renameSync,
@@ -13,19 +14,106 @@ import { resolve } from 'node:path';
 const root = resolve(new URL('..', import.meta.url).pathname);
 const frontend = root;
 const sourceDist = resolve(frontend, 'packages/frontend/apps/web/dist');
-const output = resolve(root, 'halo-module-dist');
+const target = process.argv[2] ?? 'module';
+if (target !== 'module' && target !== 'web') {
+  throw new Error(`unknown HALO Docs package target: ${target}`);
+}
+const output = resolve(
+  root,
+  target === 'web' ? 'halo-web-dist' : 'halo-module-dist'
+);
+if (target === 'web' && existsSync(output)) {
+  throw new Error(
+    `full AFFiNE output already exists at ${output}; preserve it or move it before rebuilding`
+  );
+}
+
+const buildEnv = {
+  ...process.env,
+  PUBLIC_PATH: '/',
+  GITHUB_SHA: process.env.GITHUB_SHA ?? 'halo-docs-package',
+};
+if (target === 'web') {
+  delete buildEnv.SISO_LOCAL_BACKEND_URL;
+} else {
+  buildEnv.SISO_LOCAL_BACKEND_URL =
+    process.env.SISO_LOCAL_BACKEND_URL ?? 'http://127.0.0.1:3012';
+}
 
 execFileSync('corepack', ['yarn', 'affine', '@affine/web', 'build'], {
   cwd: frontend,
   stdio: 'inherit',
-  env: {
-    ...process.env,
-    PUBLIC_PATH: '/',
-    GITHUB_SHA: process.env.GITHUB_SHA ?? 'halo-docs-package',
-    SISO_LOCAL_BACKEND_URL:
-      process.env.SISO_LOCAL_BACKEND_URL ?? 'http://127.0.0.1:3012',
-  },
+  env: buildEnv,
 });
+
+if (target === 'web') {
+  renameSync(sourceDist, output);
+  const textFiles = readdirSync(output, { recursive: true })
+    .map(file => resolve(output, String(file)))
+    .filter(file => /\.(?:css|js|html|map)$/.test(file));
+  for (const file of textFiles) {
+    const source = readFileSync(file, 'utf8').replaceAll(
+      root,
+      '/halo-docs-build'
+    );
+    writeFileSync(file, source);
+  }
+  const indexPath = resolve(output, 'index.html');
+  if (!existsSync(indexPath)) {
+    throw new Error(`full AFFiNE build has no index.html at ${output}`);
+  }
+  const indexHtml = readFileSync(indexPath, 'utf8');
+  if (!/<head(?:\s|>)/i.test(indexHtml)) {
+    throw new Error(`full AFFiNE index has no head element at ${indexPath}`);
+  }
+  writeFileSync(
+    indexPath,
+    indexHtml.replace(
+      /<head([^>]*)>/i,
+      '<head$1><script>globalThis.__HALO_DOCS_STANDALONE__=true;</script>'
+    )
+  );
+  const files = readdirSync(output, { recursive: true })
+    .map(file => String(file).replaceAll('\\', '/'))
+    .filter(file => statSync(resolve(output, file)).isFile())
+    .filter(file => file !== 'package-manifest.json')
+    .sort()
+    .map(file => {
+      const bytes = readFileSync(resolve(output, file));
+      return {
+        path: file,
+        bytes: bytes.byteLength,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      };
+    });
+  writeFileSync(
+    resolve(output, 'package-manifest.json'),
+    JSON.stringify(
+      {
+        package: '@halo/docs-web',
+        entry: 'index.html',
+        compiled: true,
+        sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], {
+          cwd: root,
+          encoding: 'utf8',
+        }).trim(),
+        sourceBoundary:
+          'AFFiNE web build output only; no AFFiNE source files are shipped',
+        files,
+      },
+      null,
+      2
+    )
+  );
+  console.log(
+    JSON.stringify({
+      output,
+      entry: resolve(output, 'index.html'),
+      files: files.length,
+    })
+  );
+  process.exit(0);
+}
 
 // The package is the final consumer of the generated dist. Move it instead
 // of duplicating ~200 MiB of assets, which also keeps low-space build hosts

@@ -1,7 +1,9 @@
 import { uniReactRoot } from '@affine/component';
+import { AiLoginRequiredModal } from '@affine/core/components/affine/auth/ai-login-required';
 import { useResponsiveSidebar } from '@affine/core/components/hooks/use-responsive-siedebar';
 import { SWRConfigProvider } from '@affine/core/components/providers/swr-config-provider';
 import { WorkspaceSideEffects } from '@affine/core/components/providers/workspace-side-effects';
+import { AIIsland } from '@affine/core/desktop/components/ai-island';
 import { AppContainer } from '@affine/core/desktop/components/app-container';
 import { DocumentTitle } from '@affine/core/desktop/components/document-title';
 import { WorkspaceDialogs } from '@affine/core/desktop/dialogs';
@@ -11,6 +13,13 @@ import { WorkbenchService } from '@affine/core/modules/workbench';
 import { WorkspaceService } from '@affine/core/modules/workspace';
 import { LiveData, useLiveData, useService } from '@toeverything/infra';
 import type { PropsWithChildren } from 'react';
+
+const isHaloDocsEmbedded =
+  (
+    globalThis as typeof globalThis & {
+      __HALO_DOCS_COMPILED_PACKAGE__?: boolean;
+    }
+  ).__HALO_DOCS_COMPILED_PACKAGE__ === true;
 
 export const WorkspaceLayout = function WorkspaceLayout({
   children,
@@ -24,11 +33,15 @@ export const WorkspaceLayout = function WorkspaceLayout({
       {currentWorkspace?.flavour !== 'local' ? (
         <QuotaCheck workspaceMeta={currentWorkspace.meta} />
       ) : null}
+      {!isHaloDocsEmbedded && <AiLoginRequiredModal />}
       <WorkspaceSideEffects />
       <PeekViewManagerModal />
       <DocumentTitle />
 
       <WorkspaceLayoutInner>{children}</WorkspaceLayoutInner>
+      {/* should show after workspace loaded */}
+      {/* FIXME: wait for better ai, <WorkspaceAIOnboarding /> */}
+      {!isHaloDocsEmbedded && <AIIsland />}
       <uniReactRoot.Root />
     </SWRConfigProvider>
   );

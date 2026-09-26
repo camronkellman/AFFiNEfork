@@ -33,6 +33,10 @@ export const useSignOut = ({
 
   const signOut = useCallback(async () => {
     onConfirm?.()?.catch(console.error);
+    if (Reflect.get(globalThis, '__HALO_DOCS_STANDALONE__') === true) {
+      window.location.assign('/.halo-door/logout');
+      return;
+    }
     const enableLocalWorkspace =
       BUILD_CONFIG.isNative ||
       defaultServerService.server.config$.value.features.includes(

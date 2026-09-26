@@ -1,11 +1,20 @@
 import { Scrollable } from '@affine/component';
+import { Avatar } from '@affine/component/ui/avatar';
+import { UserPlanButton } from '@affine/core/components/affine/auth/user-plan-button';
+import { useCatchEventCallback } from '@affine/core/components/hooks/use-catch-event-hook';
+import { AuthService } from '@affine/core/modules/cloud';
+import { GlobalDialogService } from '@affine/core/modules/dialogs';
 import type { SettingTab } from '@affine/core/modules/dialogs/constant';
+import { type WorkspaceMetadata } from '@affine/core/modules/workspace';
 import { useI18n } from '@affine/i18n';
 import { track } from '@affine/track';
+import { Logo1Icon } from '@blocksuite/icons/rc';
+import { useLiveData, useService } from '@toeverything/infra';
 import clsx from 'clsx';
 import {
   type HTMLAttributes,
   type ReactNode,
+  Suspense,
   useCallback,
   useMemo,
 } from 'react';
@@ -13,6 +22,89 @@ import {
 import { useGeneralSettingList } from '../general-setting';
 import { useWorkspaceSettingList } from '../workspace-setting';
 import * as style from './style.css';
+
+export type UserInfoProps = {
+  onAccountSettingClick: () => void;
+  onTabChange: (
+    key: SettingTab,
+    workspaceMetadata: WorkspaceMetadata | null
+  ) => void;
+  active?: boolean;
+};
+
+export const UserInfo = ({
+  onAccountSettingClick,
+  onTabChange,
+  active,
+}: UserInfoProps) => {
+  const account = useLiveData(useService(AuthService).session.account$);
+
+  const onClick = useCatchEventCallback(() => {
+    onTabChange('plans', null);
+  }, [onTabChange]);
+
+  if (!account) {
+    // TODO(@eyhn): loading ui
+    return;
+  }
+  return (
+    <div
+      data-testid="user-info-card"
+      className={clsx(style.accountButton, {
+        active: active,
+      })}
+      onClick={onAccountSettingClick}
+    >
+      <Avatar
+        size={28}
+        rounded={2}
+        name={account.label}
+        url={account.avatar}
+        className="avatar"
+      />
+
+      <div className="content">
+        <div className="name-container">
+          <div className="name" title={account.label}>
+            {account.label}
+          </div>
+          <UserPlanButton onClick={onClick} />
+        </div>
+
+        <div className="email" title={account.email}>
+          {account.email}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const SignInButton = () => {
+  const t = useI18n();
+  const globalDialogService = useService(GlobalDialogService);
+
+  return (
+    <div
+      className={style.accountButton}
+      onClick={useCallback(() => {
+        globalDialogService.open('sign-in', {});
+      }, [globalDialogService])}
+    >
+      <div className="avatar not-sign">
+        <Logo1Icon />
+      </div>
+
+      <div className="content">
+        <div className="name" title={t['com.affine.settings.sign']()}>
+          {t['com.affine.settings.sign']()}
+        </div>
+        <div className="email" title={t['com.affine.setting.sign.message']()}>
+          {t['com.affine.setting.sign.message']()}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 type SettingSidebarItemProps = {
   isActive: boolean;
@@ -74,6 +166,7 @@ export const SettingSidebar = ({
   onTabChange: (key: SettingTab) => void;
 }) => {
   const t = useI18n();
+  const loginStatus = useLiveData(useService(AuthService).session.status$);
   const generalList = useGeneralSettingList();
   const workspaceSettingList = useWorkspaceSettingList();
   const gotoTab = useCallback(
@@ -83,6 +176,11 @@ export const SettingSidebar = ({
     },
     [onTabChange]
   );
+  const onAccountSettingClick = useCallback(() => {
+    track.$.settingsPanel.menu.openSettings({ to: 'account' });
+    onTabChange('account');
+  }, [onTabChange]);
+
   const groups = useMemo(() => {
     const res = [
       {
@@ -116,6 +214,17 @@ export const SettingSidebar = ({
       <div className={style.sidebarTitle}>
         {t['com.affine.settingSidebar.title']()}
       </div>
+
+      {loginStatus === 'unauthenticated' ? <SignInButton /> : null}
+      {loginStatus === 'authenticated' ? (
+        <Suspense>
+          <UserInfo
+            onAccountSettingClick={onAccountSettingClick}
+            active={activeTab === 'account'}
+            onTabChange={onTabChange}
+          />
+        </Suspense>
+      ) : null}
 
       <Scrollable.Root>
         <Scrollable.Viewport>

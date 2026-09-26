@@ -23,6 +23,7 @@
     "dev": "yarn affine dev",
     "build": "yarn affine build",
     "halo:package": "node halo/package-build.mjs",
+    "halo:package:web": "node halo/package-build.mjs web",
     "lint:format": "oxfmt --check .",
     "lint:format:fix": "oxfmt --write .",
     "lint:ox": "oxlint --deny-warnings",
